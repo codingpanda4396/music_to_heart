@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
 FROM node:24-bookworm-slim AS builder
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.33.2 --activate
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
@@ -13,7 +14,7 @@ RUN pnpm db:generate && pnpm build
 
 FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=3000 STATIC_DIR=/app/apps/web/dist
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl dumb-init fonts-noto-cjk && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl dumb-init fonts-noto-cjk openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json

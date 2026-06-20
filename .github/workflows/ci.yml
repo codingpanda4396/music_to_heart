@@ -53,7 +53,12 @@ jobs:
           docker run -d --name qujing-ci --network host --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --cap-drop ALL --security-opt no-new-privileges -e PORT=3001 \
             -e DATABASE_URL="$DATABASE_URL" -e APP_ORIGIN="$APP_ORIGIN" qujing:ci
-          for i in {1..20}; do curl -fsS http://127.0.0.1:3001/readyz && break; sleep 2; done
+          ready=false
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:3001/readyz; then ready=true; break; fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then docker logs qujing-ci; exit 1; fi
           curl -fsS http://127.0.0.1:3001/healthz
           curl -fsS http://127.0.0.1:3001/readyz
           curl -fsS http://127.0.0.1:3001/api/moods | grep -q '焦虑'
