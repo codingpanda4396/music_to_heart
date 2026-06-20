@@ -1,0 +1,5 @@
+pnpm-lock.yaml
+dist
+coverage
+playwright-report
+apps/server/src/generated

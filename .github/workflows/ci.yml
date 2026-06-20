@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16.6-bookworm
+        env:
+          POSTGRES_USER: qujing
+          POSTGRES_PASSWORD: qujing
+          POSTGRES_DB: qujing_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U qujing -d qujing_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://qujing:qujing@127.0.0.1:5432/qujing_test
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: e2e-admin-password
+      COOKIE_SECRET: ci-cookie-secret-with-more-than-thirty-two-characters
+      APP_ORIGIN: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.2 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+      - run: pnpm --filter @qujing/server validate:catalog
+      - run: bash infra/scripts/check-migrations.sh
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - run: pnpm test:e2e
+      - name: Build and smoke test production image
+        run: |
+          docker build -t qujing:ci .
+          docker run -d --name qujing-ci --network host --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --cap-drop ALL --security-opt no-new-privileges -e PORT=3001 \
+            -e DATABASE_URL="$DATABASE_URL" -e APP_ORIGIN="$APP_ORIGIN" qujing:ci
+          for i in {1..20}; do curl -fsS http://127.0.0.1:3001/readyz && break; sleep 2; done
+          curl -fsS http://127.0.0.1:3001/healthz
+          curl -fsS http://127.0.0.1:3001/readyz
+          curl -fsS http://127.0.0.1:3001/api/moods | grep -q '焦虑'
+      - name: Reject high-risk image vulnerabilities
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: qujing:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Generate image SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: qujing:ci
+          artifact-name: qujing-ci.spdx.json
+          output-file: /tmp/qujing-ci.spdx.json
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-report, path: playwright-report, retention-days: 7 }

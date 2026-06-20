@@ -1,0 +1,8 @@
+[Unit]
+Description=Encrypted PostgreSQL backup for Qujing
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/qujing/bin/backup.sh
+User=root

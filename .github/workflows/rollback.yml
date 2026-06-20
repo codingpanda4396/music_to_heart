@@ -1,0 +1,36 @@
+name: Roll back production
+
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: Full sha256 image digest from one of the last ten releases
+        required: true
+      commit:
+        description: Commit SHA represented by the image
+        required: true
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Configure SSH and deploy prior digest
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.ECS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.ECS_SSH_KNOWN_HOSTS }}
+          HOST: ${{ secrets.ECS_HOST }}
+          USER: ${{ secrets.ECS_USER }}
+          DIGEST: ${{ inputs.digest }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}@$DIGEST"
+          ssh "$USER@$HOST" "bash /opt/qujing/bin/deploy.sh '$IMAGE' '$COMMIT' rollback"
