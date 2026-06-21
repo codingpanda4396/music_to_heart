@@ -13,10 +13,12 @@ function readRepoFile(path: string): string {
 describe('production delivery contracts', () => {
   it('keeps development dependencies out of the runtime image', () => {
     const dockerfile = readRepoFile('Dockerfile');
+    const verifyImage = readRepoFile('infra/scripts/verify-production-image.sh');
 
     expect(dockerfile).toContain('AS prod-deps');
     expect(dockerfile).toContain('pnpm install --prod');
     expect(dockerfile).not.toContain('COPY --from=builder /app/node_modules ./node_modules');
+    expect(verifyImage).toContain('MAX_COMPRESSED_BYTES=${MAX_COMPRESSED_BYTES:-461373440}');
   });
 
   it('uses a digest-qualified PostgreSQL image mirrored to ACR', () => {

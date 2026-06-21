@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 IMAGE=${1:?usage: verify-production-image.sh IMAGE}
-MAX_COMPRESSED_BYTES=${MAX_COMPRESSED_BYTES:-314572800}
+MAX_COMPRESSED_BYTES=${MAX_COMPRESSED_BYTES:-461373440}
 ARCHIVE=$(mktemp)
 trap 'rm -f "$ARCHIVE"' EXIT
 

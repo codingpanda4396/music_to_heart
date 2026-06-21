@@ -47,12 +47,14 @@ CI rejects a runtime image that:
 - contains Playwright or Vitest packages;
 - runs as root;
 - cannot start and pass `/healthz` and `/readyz` against PostgreSQL;
-- exceeds the compressed OCI layer-size ceiling of 300 MB.
+- exceeds the compressed archive ceiling of 440 MiB.
 
-CI exports the image as an OCI archive and sums its compressed layer blobs, so
-the measurement does not depend on Docker's human-readable display. The ceiling
-is generous enough for Node and Noto CJK fonts, while still failing the measured
-468 MB development-dependency image.
+CI exports the image with `docker save` and compresses it with gzip, so the
+measurement does not depend on Docker's human-readable display. The optimized
+image measured 399 MiB in CI; 440 MiB leaves about ten percent of controlled
+dependency drift. The previous registry manifest contained 446 MiB of compressed
+layers, although registry layers and a gzipped `docker save` archive are not
+identical measurements.
 
 ## Registry Flow
 

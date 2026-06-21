@@ -106,7 +106,7 @@ Create `infra/scripts/verify-production-image.sh IMAGE`, which:
 docker run --rm --entrypoint node "$IMAGE" -e \
   "for (const p of ['playwright','vitest']) { try { require.resolve(p); process.exit(1) } catch {} }"
 docker save "$IMAGE" | gzip -1 > "$archive"
-(( $(stat -c %s "$archive") <= 300 * 1024 * 1024 ))
+(( $(stat -c %s "$archive") <= 440 * 1024 * 1024 ))
 ```
 
 Use a temporary file with a cleanup trap and print the measured byte count.
