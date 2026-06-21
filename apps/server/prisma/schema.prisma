@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TrackStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model MoodCategory {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String
+  sortOrder   Int         @default(0)
+  trackMoods  TrackMood[]
+  reflections Reflection[]
+  events      Event[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([sortOrder])
+}
+
+model Track {
+  id             String       @id @default(cuid())
+  title          String
+  composer       String
+  performer      String?
+  category       String
+  period         String?
+  durationText   String
+  bilibiliUrl    String
+  bilibiliBvid   String?
+  searchKeywords String
+  difficulty     Int          @default(1)
+  status         TrackStatus  @default(DRAFT)
+  trackMoods     TrackMood[]
+  guide          Guide?
+  reflections    Reflection[]
+  events         Event[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status])
+}
+
+model TrackMood {
+  trackId String
+  moodId  String
+  weight  Int
+  reason  String
+  track   Track        @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  mood    MoodCategory @relation(fields: [moodId], references: [id], onDelete: Cascade)
+
+  @@id([trackId, moodId])
+  @@index([moodId, weight])
+}
+
+model Guide {
+  id                      String   @id @default(cuid())
+  trackId                 String   @unique
+  title                   String
+  intro                   String
+  firstImpression         String
+  background              String
+  listeningPoints         String
+  emotionalInterpretation String
+  reflectionQuestion      String
+  takeaway                String
+  track                   Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model Reflection {
+  id                String       @id @default(cuid())
+  trackId           String
+  moodId            String
+  anonymousId       String
+  journeyId         String
+  idempotencyKey    String       @unique
+  content           String       @db.VarChar(120)
+  shareCode         String       @unique
+  deletionTokenHash String
+  track             Track        @relation(fields: [trackId], references: [id])
+  mood              MoodCategory @relation(fields: [moodId], references: [id])
+  createdAt         DateTime     @default(now())
+
+  @@index([anonymousId])
+  @@index([createdAt])
+}
+
+model Event {
+  id          String        @id @default(cuid())
+  eventName   String
+  anonymousId String
+  journeyId   String
+  moodId      String?
+  trackId     String?
+  shareCode   String?
+  metadata    Json?
+  mood        MoodCategory? @relation(fields: [moodId], references: [id], onDelete: SetNull)
+  track       Track?        @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+
+  @@index([eventName, createdAt])
+  @@index([journeyId])
+  @@index([shareCode])
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

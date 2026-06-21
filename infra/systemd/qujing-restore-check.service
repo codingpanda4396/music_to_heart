@@ -1,0 +1,8 @@
+[Unit]
+Description=Restore latest Qujing backup into an isolated PostgreSQL container
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/qujing/bin/weekly-restore-check.sh
+User=root
