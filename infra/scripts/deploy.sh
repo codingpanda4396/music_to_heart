@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-IMAGE="${1:?usage: deploy.sh IMAGE@DIGEST COMMIT_SHA}"
-COMMIT="${2:?usage: deploy.sh IMAGE@DIGEST COMMIT_SHA}"
+IMAGE="${1:?usage: deploy.sh IMMUTABLE_IMAGE COMMIT_SHA}"
+COMMIT="${2:?usage: deploy.sh IMMUTABLE_IMAGE COMMIT_SHA}"
 MODE=${3:-deploy}
 ROOT=/opt/qujing
 ENV_FILE=/etc/qujing/runtime.env
@@ -10,10 +10,23 @@ LOCK="$ROOT/deploy.lock"
 exec 9>"$LOCK"
 flock -n 9 || { echo "another deployment is running" >&2; exit 1; }
 
-[[ "$IMAGE" == *@sha256:* ]] || { echo "deployment requires an immutable digest" >&2; exit 1; }
+LOCAL_IMAGE_ID=false
+if [[ "$IMAGE" == sha256:* ]]; then
+  LOCAL_IMAGE_ID=true
+elif [[ "$IMAGE" == *@sha256:* ]]; then
+  :
+else
+  echo "deployment requires an immutable registry digest or local image ID" >&2
+  exit 1
+fi
 if [[ "$MODE" == rollback ]] && ! grep -Fq " $IMAGE " "$ROOT/releases.log" 2>/dev/null; then
   echo "rollback digest is not present in the last ten release records" >&2
   exit 1
+fi
+if $LOCAL_IMAGE_ID; then
+  docker image inspect "$IMAGE" >/dev/null
+else
+  docker pull "$IMAGE"
 fi
 source "$ENV_FILE"
 ACTIVE=blue
@@ -34,7 +47,6 @@ rollback() {
 }
 trap rollback ERR
 
-docker pull "$IMAGE"
 docker run --rm --network qujing --env-file "$ENV_FILE" "$IMAGE" \
   ./apps/server/node_modules/.bin/prisma migrate deploy --schema apps/server/prisma/schema.prisma
 docker run --rm --network qujing --env-file "$ENV_FILE" "$IMAGE" \

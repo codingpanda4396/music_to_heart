@@ -21,23 +21,36 @@ describe('production delivery contracts', () => {
     expect(verifyImage).toContain('MAX_COMPRESSED_BYTES=${MAX_COMPRESSED_BYTES:-461373440}');
   });
 
-  it('uses a digest-qualified PostgreSQL image mirrored to ACR', () => {
+  it('uses a locally staged immutable PostgreSQL image', () => {
     const compose = readRepoFile('infra/compose/database.yml');
     const bootstrap = readRepoFile('infra/bootstrap.sh');
-    const mirrorWorkflow = readRepoFile('.github/workflows/mirror-postgres.yml');
+    const stageWorkflow = readRepoFile('.github/workflows/stage-postgres.yml');
 
     expect(compose).toContain('image: ${POSTGRES_IMAGE:?');
-    expect(bootstrap).toContain('ACR_REGISTRY');
-    expect(mirrorWorkflow).toContain('POSTGRES_UPSTREAM_DIGEST');
+    expect(compose).toContain('pull_policy: never');
+    expect(bootstrap).not.toContain('ACR_REGISTRY');
+    expect(bootstrap).toContain('BASE_ONLY');
+    expect(bootstrap).toContain('POSTGRES_IMAGE must be a local immutable image ID');
+    expect(stageWorkflow).toContain('POSTGRES_UPSTREAM_DIGEST');
+    expect(stageWorkflow).toContain('docker save');
+    expect(stageWorkflow).toContain('docker load');
   });
 
-  it('publishes and rolls back immutable ACR application images', () => {
+  it('delivers and rolls back immutable local application images', () => {
     const deployWorkflow = readRepoFile('.github/workflows/deploy.yml');
     const rollbackWorkflow = readRepoFile('.github/workflows/rollback.yml');
+    const deployScript = readRepoFile('infra/scripts/deploy.sh');
 
-    expect(deployWorkflow).toContain('ACR_PASSWORD');
-    expect(deployWorkflow).toContain('acr_digest');
-    expect(deployWorkflow).toContain('type=raw,value=${{ steps.sha.outputs.value }}');
-    expect(rollbackWorkflow).toContain('ACR_REGISTRY');
+    expect(deployWorkflow).toContain('docker save');
+    expect(deployWorkflow).toContain('docker load');
+    expect(deployWorkflow).toContain('sha256sum --check');
+    expect(deployWorkflow).toContain('scp');
+    expect(deployWorkflow).toContain('IMAGE_TAG="qujing:$SHA"');
+    expect(deployWorkflow).toContain('^[0-9a-f]{40}$');
+    expect(deployWorkflow).not.toContain('ACR_');
+    expect(deployWorkflow).not.toContain('ghcr.io');
+    expect(deployScript).toContain('LOCAL_IMAGE_ID');
+    expect(rollbackWorkflow).toContain('^sha256:[0-9a-f]{64}$');
+    expect(rollbackWorkflow).not.toContain('ACR_REGISTRY');
   });
 });

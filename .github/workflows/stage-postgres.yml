@@ -1,0 +1,57 @@
+name: Stage PostgreSQL image on ECS
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: stage-postgres
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  POSTGRES_SOURCE: docker.io/library/postgres
+  POSTGRES_UPSTREAM_DIGEST: sha256:557fea37a744d5f4c8faab304b0a90858b53ab119735a88c131fd19dab802f36
+
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Pull and archive the pinned image
+        run: |
+          set -Eeuo pipefail
+          docker pull "$POSTGRES_SOURCE@$POSTGRES_UPSTREAM_DIGEST"
+          docker tag "$POSTGRES_SOURCE@$POSTGRES_UPSTREAM_DIGEST" qujing-postgres:16.6-bookworm
+          docker save qujing-postgres:16.6-bookworm | gzip -1 > /tmp/qujing-postgres-16.6.tar.gz
+          (cd /tmp && sha256sum qujing-postgres-16.6.tar.gz > qujing-postgres-16.6.tar.gz.sha256)
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.ECS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.ECS_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Transfer and load PostgreSQL
+        env:
+          HOST: ${{ secrets.ECS_HOST }}
+          USER: ${{ secrets.ECS_USER }}
+        run: |
+          set -Eeuo pipefail
+          scp /tmp/qujing-postgres-16.6.tar.gz /tmp/qujing-postgres-16.6.tar.gz.sha256 \
+            "$USER@$HOST:/opt/qujing/releases/"
+          STAGE_OUTPUT=$(ssh "$USER@$HOST" "set -Eeuo pipefail
+            cd /opt/qujing/releases
+            sha256sum --check qujing-postgres-16.6.tar.gz.sha256
+            gzip -dc qujing-postgres-16.6.tar.gz | docker load
+            IMAGE_ID=\$(docker image inspect --format '{{.Id}}' qujing-postgres:16.6-bookworm)
+            printf '%s\\n' \"\$IMAGE_ID\" > /opt/qujing/postgres-image-id
+            rm -f qujing-postgres-16.6.tar.gz qujing-postgres-16.6.tar.gz.sha256
+            printf 'IMAGE_ID=%s\\n' \"\$IMAGE_ID\"")
+          printf '%s\n' "$STAGE_OUTPUT"
+          IMAGE_ID=$(printf '%s\n' "$STAGE_OUTPUT" | awk -F= '/^IMAGE_ID=sha256:/ {print $2; exit}')
+          [[ -n "$IMAGE_ID" ]]
+          echo "PostgreSQL local image ID: \`$IMAGE_ID\`" >> "$GITHUB_STEP_SUMMARY"

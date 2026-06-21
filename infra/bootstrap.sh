@@ -3,22 +3,20 @@ set -Eeuo pipefail
 [[ $EUID -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
 
 DOMAIN=${DOMAIN:-pandaprivate.top}
+BASE_ONLY=${BASE_ONLY:-false}
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-: "${ADMIN_EMAIL:?Set ADMIN_EMAIL for certificate registration}"
-: "${ACR_REGISTRY:?Set ACR_REGISTRY}"
-: "${ACR_USERNAME:?Set ACR_USERNAME}"
-: "${ACR_PASSWORD:?Set ACR_PASSWORD}"
-: "${ACR_PREFLIGHT_IMAGE:?Set ACR_PREFLIGHT_IMAGE to an existing digest-qualified ACR image}"
-: "${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to the digest-qualified ACR PostgreSQL mirror}"
-: "${OSS_ENDPOINT:?Set OSS_ENDPOINT}"
-: "${OSS_BUCKET:?Set OSS_BUCKET}"
-: "${OSS_ACCESS_KEY_ID:?Set OSS_ACCESS_KEY_ID}"
-: "${OSS_ACCESS_KEY_SECRET:?Set OSS_ACCESS_KEY_SECRET}"
-command -v ossutil >/dev/null || { echo 'Install Alibaba Cloud ossutil before bootstrap.' >&2; exit 1; }
 DEPLOY_PUBLIC_KEY=${DEPLOY_PUBLIC_KEY:-}
 [[ -n "$DEPLOY_PUBLIC_KEY" ]] || { echo 'Set DEPLOY_PUBLIC_KEY to the GitHub Actions deploy public key.' >&2; exit 1; }
-[[ "$ACR_PREFLIGHT_IMAGE" == *@sha256:* ]] || { echo 'ACR_PREFLIGHT_IMAGE must use an immutable digest.' >&2; exit 1; }
-[[ "$POSTGRES_IMAGE" == *@sha256:* ]] || { echo 'POSTGRES_IMAGE must use an immutable digest.' >&2; exit 1; }
+if [[ "$BASE_ONLY" != true ]]; then
+  : "${ADMIN_EMAIL:?Set ADMIN_EMAIL for certificate registration}"
+  : "${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to the staged local PostgreSQL image ID}"
+  : "${OSS_ENDPOINT:?Set OSS_ENDPOINT}"
+  : "${OSS_BUCKET:?Set OSS_BUCKET}"
+  : "${OSS_ACCESS_KEY_ID:?Set OSS_ACCESS_KEY_ID}"
+  : "${OSS_ACCESS_KEY_SECRET:?Set OSS_ACCESS_KEY_SECRET}"
+  command -v ossutil >/dev/null || { echo 'Install Alibaba Cloud ossutil before bootstrap.' >&2; exit 1; }
+  [[ "$POSTGRES_IMAGE" == sha256:* ]] || { echo 'POSTGRES_IMAGE must be a local immutable image ID.' >&2; exit 1; }
+fi
 
 apt-get update
 apt-get install -y ca-certificates curl gnupg nginx certbot python3-certbot-nginx ufw openssl unzip
@@ -41,6 +39,17 @@ chmod 0440 /etc/sudoers.d/qujing-deploy
 
 install -o deploy -g deploy -m 0755 -d /opt/qujing /opt/qujing/releases /opt/qujing/bin
 install -m 0755 -d /etc/qujing /var/www/certbot
+docker network inspect qujing >/dev/null 2>&1 || docker network create qujing
+if [[ "$BASE_ONLY" == true ]]; then
+  ufw default deny incoming
+  ufw default allow outgoing
+  ufw allow OpenSSH
+  ufw allow 'Nginx Full'
+  ufw --force enable
+  systemctl enable --now docker nginx certbot.timer
+  echo 'Base bootstrap complete. Stage PostgreSQL, then run the full bootstrap.'
+  exit 0
+fi
 if [[ ! -f /etc/qujing/runtime.env ]]; then
   DB_PASSWORD=$(openssl rand -hex 24)
   COOKIE_SECRET=$(openssl rand -hex 32)
@@ -73,12 +82,10 @@ fi
 ossutil config -e "$OSS_ENDPOINT" -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -L CH -c /etc/qujing/ossutilconfig
 chmod 0600 /etc/qujing/ossutilconfig
 
-docker network inspect qujing >/dev/null 2>&1 || docker network create qujing
-printf '%s' "$ACR_PASSWORD" | sudo -u deploy docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
-for attempt in 1 2 3; do
-  echo "ACR pull preflight $attempt/3"
-  timeout --kill-after=15 180 sudo -u deploy docker pull "$ACR_PREFLIGHT_IMAGE"
-done
+docker image inspect "$POSTGRES_IMAGE" >/dev/null || {
+  echo 'Stage the pinned PostgreSQL image on this ECS before bootstrap.' >&2
+  exit 1
+}
 install -o deploy -g deploy -m 0755 "$SCRIPT_DIR/scripts/deploy.sh" /opt/qujing/bin/deploy.sh
 install -m 0755 "$SCRIPT_DIR/scripts/backup.sh" /opt/qujing/bin/backup.sh
 install -m 0755 "$SCRIPT_DIR/scripts/restore-check.sh" /opt/qujing/bin/restore-check.sh
