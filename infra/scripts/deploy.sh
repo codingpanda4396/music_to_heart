@@ -36,9 +36,9 @@ trap rollback ERR
 
 docker pull "$IMAGE"
 docker run --rm --network qujing --env-file "$ENV_FILE" "$IMAGE" \
-  ./node_modules/.bin/prisma migrate deploy --schema apps/server/prisma/schema.prisma
+  ./apps/server/node_modules/.bin/prisma migrate deploy --schema apps/server/prisma/schema.prisma
 docker run --rm --network qujing --env-file "$ENV_FILE" "$IMAGE" \
-  ./node_modules/.bin/tsx apps/server/prisma/seed.ts
+  ./apps/server/node_modules/.bin/tsx apps/server/prisma/seed.ts
 docker run --rm --network qujing --env-file "$ENV_FILE" "$IMAGE" \
   node apps/server/dist/validate-catalog.js
 docker rm -f "$NEXT_CONTAINER" >/dev/null 2>&1 || true
