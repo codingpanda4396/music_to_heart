@@ -50,7 +50,7 @@ jobs:
           images: |
             ghcr.io/${{ github.repository }}
             ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/music-to-heart
-          tags: type=sha,format=long,prefix=
+          tags: type=raw,value=${{ steps.sha.outputs.value }}
       - id: build
         uses: docker/build-push-action@v6
         with:

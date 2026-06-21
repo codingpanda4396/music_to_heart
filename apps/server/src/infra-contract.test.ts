@@ -35,6 +35,7 @@ describe('production delivery contracts', () => {
 
     expect(deployWorkflow).toContain('ACR_PASSWORD');
     expect(deployWorkflow).toContain('acr_digest');
+    expect(deployWorkflow).toContain('type=raw,value=${{ steps.sha.outputs.value }}');
     expect(rollbackWorkflow).toContain('ACR_REGISTRY');
   });
 });
