@@ -16,9 +16,7 @@ describe('production delivery contracts', () => {
 
     expect(dockerfile).toContain('AS prod-deps');
     expect(dockerfile).toContain('pnpm install --prod');
-    expect(dockerfile).not.toContain(
-      'COPY --from=builder /app/node_modules ./node_modules',
-    );
+    expect(dockerfile).not.toContain('COPY --from=builder /app/node_modules ./node_modules');
   });
 
   it('uses a digest-qualified PostgreSQL image mirrored to ACR', () => {

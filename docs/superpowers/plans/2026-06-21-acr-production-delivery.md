@@ -27,6 +27,7 @@
 ### Task 1: Add failing infrastructure delivery contracts
 
 **Files:**
+
 - Create: `apps/server/src/infra-contract.test.ts`
 
 - [ ] **Step 1: Write the failing contract test**
@@ -50,7 +51,7 @@ expect(mirrorWorkflow).toContain('POSTGRES_UPSTREAM_DIGEST');
 Run:
 
 ```bash
-pnpm vitest run apps/server/src/infra-contract.test.ts
+pnpm vitest run apps/server/src/infra-contract.test.ts -t 'keeps development dependencies out of the runtime image'
 ```
 
 Expected: FAIL because the Dockerfile has no `prod-deps` stage and the ACR workflow does not exist.
@@ -65,6 +66,7 @@ git commit -m "test: define ACR delivery contracts"
 ### Task 2: Build a production-only application image
 
 **Files:**
+
 - Modify: `apps/server/package.json`
 - Modify: `pnpm-lock.yaml`
 - Modify: `Dockerfile`
@@ -123,14 +125,15 @@ Run:
 
 ```bash
 pnpm vitest run apps/server/src/infra-contract.test.ts
+pnpm vitest run --exclude apps/server/src/infra-contract.test.ts
 pnpm format:check
 pnpm lint
 pnpm typecheck
-pnpm test
 pnpm build
 ```
 
-Expected: all commands exit 0.
+Expected: the production-image contract and all pre-existing tests pass. The ACR
+database and workflow contracts remain RED until Tasks 3 and 4.
 
 - [ ] **Step 6: Commit the production image change**
 
@@ -142,6 +145,7 @@ git commit -m "build: exclude development dependencies from runtime image"
 ### Task 3: Pin PostgreSQL to an ACR mirror
 
 **Files:**
+
 - Modify: `infra/compose/database.yml`
 - Modify: `infra/bootstrap.sh`
 - Create: `.github/workflows/mirror-postgres.yml`
@@ -196,6 +200,7 @@ git commit -m "ops: mirror pinned PostgreSQL image to ACR"
 ### Task 4: Publish and deploy one build through ACR
 
 **Files:**
+
 - Modify: `.github/workflows/deploy.yml`
 - Modify: `.github/workflows/rollback.yml`
 
@@ -245,6 +250,7 @@ git commit -m "ci: deploy immutable ACR image digests"
 ### Task 5: Document, verify, publish, and bootstrap production
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1: Document required production inputs**

@@ -65,19 +65,19 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.8.5
+      prisma:
+        specifier: ^6.19.1
+        version: 6.19.3(typescript@5.9.3)
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
+      tsx:
+        specifier: ^4.21.0
+        version: 4.22.4
       zod:
         specifier: ^4.1.13
         version: 4.4.3
     devDependencies:
-      prisma:
-        specifier: ^6.19.1
-        version: 6.19.3(typescript@5.9.3)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.22.4
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

@@ -50,6 +50,7 @@ jobs:
       - name: Build and smoke test production image
         run: |
           docker build -t qujing:ci .
+          bash infra/scripts/verify-production-image.sh qujing:ci
           docker run -d --name qujing-ci --network host --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --cap-drop ALL --security-opt no-new-privileges -e PORT=3001 \
             -e DATABASE_URL="$DATABASE_URL" -e APP_ORIGIN="$APP_ORIGIN" qujing:ci
