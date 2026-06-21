@@ -27,10 +27,13 @@ jobs:
           USER: ${{ secrets.ECS_USER }}
           DIGEST: ${{ inputs.digest }}
           COMMIT: ${{ inputs.commit }}
+          ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+          ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
         run: |
+          set -Eeuo pipefail
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}@$DIGEST"
+          IMAGE="$ACR_REGISTRY/$ACR_NAMESPACE/music-to-heart@$DIGEST"
           ssh "$USER@$HOST" "bash /opt/qujing/bin/deploy.sh '$IMAGE' '$COMMIT' rollback"

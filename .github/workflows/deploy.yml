@@ -20,9 +20,11 @@ jobs:
   image:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
+    environment: production
     outputs:
-      digest: ${{ steps.build.outputs.digest }}
-      image: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.verify.outputs.acr_digest }}
+      ghcr_digest: ${{ steps.verify.outputs.ghcr_digest }}
+      acr_digest: ${{ steps.verify.outputs.acr_digest }}
       sha: ${{ steps.sha.outputs.value }}
     steps:
       - uses: actions/checkout@v4
@@ -37,10 +39,17 @@ jobs:
             username: '${{ github.actor }}',
             password: '${{ secrets.GITHUB_TOKEN }}',
           }
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: |
+            ghcr.io/${{ github.repository }}
+            ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/music-to-heart
           tags: type=sha,format=long,prefix=
       - id: build
         uses: docker/build-push-action@v6
@@ -52,16 +61,33 @@ jobs:
           sbom: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - id: verify
+        name: Verify registry manifest digests
+        env:
+          SHA: ${{ steps.sha.outputs.value }}
+          BUILD_DIGEST: ${{ steps.build.outputs.digest }}
+          ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+          ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
+        run: |
+          set -Eeuo pipefail
+          GHCR_REF="ghcr.io/${GITHUB_REPOSITORY,,}:$SHA"
+          ACR_REF="$ACR_REGISTRY/$ACR_NAMESPACE/music-to-heart:$SHA"
+          GHCR_DIGEST=$(docker buildx imagetools inspect "$GHCR_REF" | awk '/^Digest:/ {print $2; exit}')
+          ACR_DIGEST=$(docker buildx imagetools inspect "$ACR_REF" | awk '/^Digest:/ {print $2; exit}')
+          [[ "$GHCR_DIGEST" == "$BUILD_DIGEST" ]]
+          [[ "$ACR_DIGEST" == "$BUILD_DIGEST" ]]
+          echo "ghcr_digest=$GHCR_DIGEST" >> "$GITHUB_OUTPUT"
+          echo "acr_digest=$ACR_DIGEST" >> "$GITHUB_OUTPUT"
       - uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.verify.outputs.ghcr_digest }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
       - uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}
-          subject-digest: ${{ steps.build.outputs.digest }}
+          subject-digest: ${{ steps.verify.outputs.ghcr_digest }}
           push-to-registry: true
 
   deploy:
@@ -94,7 +120,15 @@ jobs:
           HOST: ${{ secrets.ECS_HOST }}
           USER: ${{ secrets.ECS_USER }}
           SHA: ${{ needs.image.outputs.sha }}
-          DIGEST: ${{ needs.image.outputs.digest }}
+          ACR_DIGEST: ${{ needs.image.outputs.acr_digest }}
+          ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+          ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
         run: |
-          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}@$DIGEST"
+          set -Eeuo pipefail
+          IMAGE="$ACR_REGISTRY/$ACR_NAMESPACE/music-to-heart@$ACR_DIGEST"
           ssh "$USER@$HOST" "bash /opt/qujing/releases/$SHA/infra/scripts/deploy.sh '$IMAGE' '$SHA'"
+          {
+            echo '### Production deployment'
+            echo "- Commit: \`$SHA\`"
+            echo "- ACR digest: \`$ACR_DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"
