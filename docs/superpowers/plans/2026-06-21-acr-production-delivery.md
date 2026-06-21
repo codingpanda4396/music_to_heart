@@ -177,9 +177,10 @@ env:
   POSTGRES_UPSTREAM_DIGEST: sha256:557fea37a744d5f4c8faab304b0a90858b53ab119735a88c131fd19dab802f36
 ```
 
-Install `crane`, authenticate to ACR using Environment secrets, copy the source
-digest to `$ACR_REGISTRY/$ACR_NAMESPACE/qujing-postgres:16.6-bookworm`, and
-compare the linux/amd64 source and destination digests. Fail on mismatch.
+Use Docker Buildx `imagetools create`, authenticate to ACR using Environment
+secrets, copy the source digest to
+`$ACR_REGISTRY/$ACR_NAMESPACE/qujing-postgres:16.6-bookworm`, and compare the
+source and destination manifest digests. Fail on mismatch.
 
 - [ ] **Step 4: Run the focused contract test**
 
