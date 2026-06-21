@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       digest:
-        description: Full sha256 image digest from one of the last ten releases
+        description: Local sha256 image ID from one of the last ten releases
         required: true
       commit:
         description: Commit SHA represented by the image
@@ -28,9 +28,17 @@ jobs:
           DIGEST: ${{ inputs.digest }}
           COMMIT: ${{ inputs.commit }}
         run: |
+          set -Eeuo pipefail
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            echo 'Rollback requires a full local sha256 image ID.' >&2
+            exit 1
+          }
+          [[ "$COMMIT" =~ ^[0-9a-f]{7,40}$ ]] || {
+            echo 'Rollback requires a hexadecimal commit SHA.' >&2
+            exit 1
+          }
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}@$DIGEST"
-          ssh "$USER@$HOST" "bash /opt/qujing/bin/deploy.sh '$IMAGE' '$COMMIT' rollback"
+          ssh "$USER@$HOST" "bash /opt/qujing/bin/deploy.sh '$DIGEST' '$COMMIT' rollback"

@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:16.6-bookworm
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to a local immutable image ID}
+    pull_policy: never
     container_name: qujing-postgres
     restart: unless-stopped
     env_file: /etc/qujing/runtime.env
