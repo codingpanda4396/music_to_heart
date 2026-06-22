@@ -19,6 +19,7 @@ export function RecommendationPage({
   const [exhausted, setExhausted] = useState(false);
   const shown = useRef<string[]>(journey?.shownTrackIds ?? []);
   const hasResult = useRef(false);
+  const initiallyLoadedJourneyId = useRef<string | null>(null);
   const load = useCallback(async () => {
     if (!journey) return;
     setLoading(true);
@@ -53,10 +54,10 @@ export function RecommendationPage({
     }
   }, [addShown, journey, saveContext]);
   useEffect(() => {
-    // One initial recommendation is loaded when the route becomes active.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!journey || initiallyLoadedJourneyId.current === journey.journeyId) return;
+    initiallyLoadedJourneyId.current = journey.journeyId;
     void load();
-  }, [load]);
+  }, [journey, load]);
   if (!journey) return <Navigate to="/" replace />;
   return (
     <Shell backTo="/">
