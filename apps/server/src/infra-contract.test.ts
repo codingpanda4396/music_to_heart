@@ -53,4 +53,14 @@ describe('production delivery contracts', () => {
     expect(rollbackWorkflow).toContain('^sha256:[0-9a-f]{64}$');
     expect(rollbackWorkflow).not.toContain('ACR_REGISTRY');
   });
+
+  it('serves and certificates only the canonical root domain', () => {
+    const nginxTemplate = readRepoFile('infra/nginx/qujing.conf.template');
+    const bootstrap = readRepoFile('infra/bootstrap.sh');
+
+    expect(nginxTemplate).not.toContain('www.__DOMAIN__');
+    expect(bootstrap).not.toContain('www.$DOMAIN');
+    expect(bootstrap).toContain('certbot certonly');
+    expect(bootstrap).toContain('-d "$DOMAIN"');
+  });
 });

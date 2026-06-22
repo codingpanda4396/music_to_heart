@@ -3,7 +3,7 @@
 ## 1. 上线前资源
 
 - Ubuntu 24.04 x86_64 ECS，安全组仅允许 22、80、443。
-- `pandaprivate.top` 与 `www.pandaprivate.top` 的 A/AAAA 记录指向 ECS。
+- `pandaprivate.top` 的 A/AAAA 记录指向 ECS；首版不要求 `www` 子域名。
 - 私有 OSS Bucket；RAM 用户仅能读写该 Bucket 的备份前缀。
 - ECS 已安装阿里云官方 `ossutil`。
 - GitHub `production` Environment 中已配置 ECS SSH 主机、用户、私钥和固定 host key。
