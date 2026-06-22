@@ -62,7 +62,7 @@ jobs:
           if [[ "$ready" != true ]]; then docker logs qujing-ci; exit 1; fi
           curl -fsS http://127.0.0.1:3001/healthz
           curl -fsS http://127.0.0.1:3001/readyz
-          curl -fsS http://127.0.0.1:3001/api/moods | grep -q '焦虑'
+          curl -fsS http://127.0.0.1:3001/api/origins | grep -q '脑子一直停不下来'
       - name: Reject high-risk image vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
         with:

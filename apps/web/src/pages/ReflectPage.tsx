@@ -3,8 +3,9 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { api, sendEvent, type TrackDetail } from '../api.js';
 import { Loading, Shell } from '../components.js';
 import type { Journey } from '../journey.js';
+import type { Need } from './HomePage.js';
 
-export function ReflectPage({ journey }: { journey: Journey | null }) {
+export function ReflectPage({ journey, need }: { journey: Journey | null; need: Need | null }) {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const [track, setTrack] = useState<TrackDetail | null>(null);
@@ -23,7 +24,8 @@ export function ReflectPage({ journey }: { journey: Journey | null }) {
     try {
       const result = await api.reflect({
         trackId: id,
-        moodId: journey.moodId,
+        originId: journey.originId,
+        needId: journey.needId,
         anonymousId: localStorage.getItem('qj_anonymous_id')!,
         journeyId: journey.journeyId,
         idempotencyKey,
@@ -35,7 +37,8 @@ export function ReflectPage({ journey }: { journey: Journey | null }) {
         eventName: 'reflection_created',
         anonymousId: localStorage.getItem('qj_anonymous_id')!,
         journeyId: journey.journeyId,
-        moodId: journey.moodId,
+        originId: journey.originId,
+        needId: journey.needId,
         trackId: id,
         shareCode: result.shareCode,
       });
@@ -49,8 +52,10 @@ export function ReflectPage({ journey }: { journey: Journey | null }) {
     <Shell backTo={`/listen/${id}`}>
       <section className="reflect">
         <p className="eyebrow">听完之后</p>
-        <h1>{track.guide.reflectionQuestion}</h1>
-        <p className="soft">不需要写得正确，只需要写得真实。</p>
+        <h1>听完以后，此刻发生了什么？</h1>
+        <p className="soft">
+          {need?.reflectionPrompt ?? track.guide.reflectionQuestion} 没有变化也可以。
+        </p>
         <textarea
           aria-label="我的听感"
           value={content}

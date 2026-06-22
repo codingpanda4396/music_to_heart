@@ -65,7 +65,7 @@ for _ in {1..30}; do
   sleep 2
 done
 curl -fsS "http://127.0.0.1:$NEXT_PORT/readyz" >/dev/null
-curl -fsS "http://127.0.0.1:$NEXT_PORT/api/moods" | grep -q '焦虑'
+curl -fsS "http://127.0.0.1:$NEXT_PORT/api/origins" | grep -q '脑子一直停不下来'
 
 printf 'upstream qujing_active { server 127.0.0.1:%s; keepalive 32; }\n' "$NEXT_PORT" > "$ROOT/current-upstream.conf.tmp"
 mv "$ROOT/current-upstream.conf.tmp" "$ROOT/current-upstream.conf"

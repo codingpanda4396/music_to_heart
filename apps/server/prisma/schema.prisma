@@ -12,17 +12,33 @@ enum TrackStatus {
   PUBLISHED
 }
 
-model MoodCategory {
+model OriginCategory {
   id          String      @id @default(cuid())
   name        String
   slug        String      @unique
   description String
   sortOrder   Int         @default(0)
-  trackMoods  TrackMood[]
+  trackOrigins TrackOrigin[]
   reflections Reflection[]
   events      Event[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+
+  @@index([sortOrder])
+}
+
+model NeedCategory {
+  id               String      @id @default(cuid())
+  name             String
+  slug             String      @unique
+  description      String
+  reflectionPrompt String
+  sortOrder        Int         @default(0)
+  trackNeeds       TrackNeed[]
+  reflections      Reflection[]
+  events           Event[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([sortOrder])
 }
@@ -40,7 +56,8 @@ model Track {
   searchKeywords String
   difficulty     Int          @default(1)
   status         TrackStatus  @default(DRAFT)
-  trackMoods     TrackMood[]
+  trackOrigins   TrackOrigin[]
+  trackNeeds     TrackNeed[]
   guide          Guide?
   reflections    Reflection[]
   events         Event[]
@@ -50,16 +67,28 @@ model Track {
   @@index([status])
 }
 
-model TrackMood {
+model TrackOrigin {
+  trackId  String
+  originId String
+  weight  Int
+  reason  String
+  track   Track          @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  origin  OriginCategory @relation(fields: [originId], references: [id], onDelete: Cascade)
+
+  @@id([trackId, originId])
+  @@index([originId, weight])
+}
+
+model TrackNeed {
   trackId String
-  moodId  String
+  needId  String
   weight  Int
   reason  String
   track   Track        @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  mood    MoodCategory @relation(fields: [moodId], references: [id], onDelete: Cascade)
+  need    NeedCategory @relation(fields: [needId], references: [id], onDelete: Cascade)
 
-  @@id([trackId, moodId])
-  @@index([moodId, weight])
+  @@id([trackId, needId])
+  @@index([needId, weight])
 }
 
 model Guide {
@@ -81,7 +110,8 @@ model Guide {
 model Reflection {
   id                String       @id @default(cuid())
   trackId           String
-  moodId            String
+  originId          String
+  needId            String
   anonymousId       String
   journeyId         String
   idempotencyKey    String       @unique
@@ -89,7 +119,8 @@ model Reflection {
   shareCode         String       @unique
   deletionTokenHash String
   track             Track        @relation(fields: [trackId], references: [id])
-  mood              MoodCategory @relation(fields: [moodId], references: [id])
+  origin            OriginCategory @relation(fields: [originId], references: [id])
+  need              NeedCategory   @relation(fields: [needId], references: [id])
   createdAt         DateTime     @default(now())
 
   @@index([anonymousId])
@@ -101,11 +132,13 @@ model Event {
   eventName   String
   anonymousId String
   journeyId   String
-  moodId      String?
+  originId    String?
+  needId      String?
   trackId     String?
   shareCode   String?
   metadata    Json?
-  mood        MoodCategory? @relation(fields: [moodId], references: [id], onDelete: SetNull)
+  origin      OriginCategory? @relation(fields: [originId], references: [id], onDelete: SetNull)
+  need        NeedCategory?   @relation(fields: [needId], references: [id], onDelete: SetNull)
   track       Track?        @relation(fields: [trackId], references: [id], onDelete: SetNull)
   createdAt   DateTime      @default(now())
 

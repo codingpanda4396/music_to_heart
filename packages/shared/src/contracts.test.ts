@@ -2,26 +2,49 @@ import { describe, expect, it } from 'vitest';
 import { createReflectionSchema, eventSchema, recommendRequestSchema } from './index.js';
 
 describe('public contracts', () => {
-  it('requires one mood and a journey when requesting a recommendation', () => {
+  it('requires an origin, a need and a journey when requesting a recommendation', () => {
     expect(
-      recommendRequestSchema.parse({ moodId: 'mood-1', journeyId: 'journey-12345678' }),
-    ).toEqual({ moodId: 'mood-1', journeyId: 'journey-12345678', excludeTrackIds: [] });
-    expect(() => recommendRequestSchema.parse({ moodId: '', journeyId: 'short' })).toThrow();
+      recommendRequestSchema.parse({
+        originId: 'origin-racing-mind',
+        needId: 'need-calm',
+        journeyId: 'journey-12345678',
+      }),
+    ).toEqual({
+      originId: 'origin-racing-mind',
+      needId: 'need-calm',
+      journeyId: 'journey-12345678',
+      excludeTrackIds: [],
+    });
+    expect(() =>
+      recommendRequestSchema.parse({
+        originId: 'origin-racing-mind',
+        journeyId: 'journey-12345678',
+      }),
+    ).toThrow();
   });
 
   it('accepts only allow-listed analytics events', () => {
     expect(
       eventSchema.parse({
-        eventName: 'mood_selected',
+        eventName: 'origin_selected',
         anonymousId: 'anonymous-12345678',
         journeyId: 'journey-12345678',
+        originId: 'origin-racing-mind',
       }).eventName,
-    ).toBe('mood_selected');
+    ).toBe('origin_selected');
     expect(() =>
       eventSchema.parse({
         eventName: 'arbitrary_event',
         anonymousId: 'anonymous-12345678',
         journeyId: 'journey-12345678',
+      }),
+    ).toThrow();
+    expect(() =>
+      eventSchema.parse({
+        eventName: 'need_selected',
+        anonymousId: 'anonymous-12345678',
+        journeyId: 'journey-12345678',
+        originId: 'origin-racing-mind',
       }),
     ).toThrow();
   });
@@ -30,7 +53,8 @@ describe('public contracts', () => {
     expect(
       createReflectionSchema.parse({
         trackId: 'track-1',
-        moodId: 'mood-1',
+        originId: 'origin-racing-mind',
+        needId: 'need-calm',
         anonymousId: 'anonymous-12345678',
         journeyId: 'journey-12345678',
         idempotencyKey: 'idempotency-12345678',
@@ -40,7 +64,8 @@ describe('public contracts', () => {
     expect(() =>
       createReflectionSchema.parse({
         trackId: 'track-1',
-        moodId: 'mood-1',
+        originId: 'origin-racing-mind',
+        needId: 'need-calm',
         anonymousId: 'anonymous-12345678',
         journeyId: 'journey-12345678',
         idempotencyKey: 'idempotency-12345678',

@@ -5,14 +5,25 @@ import type { Repository, StoredReflection } from './repository.js';
 function repositoryFixture(): Repository {
   const reflections = new Map<string, StoredReflection>();
   return {
-    listMoods: async () => [
-      { id: 'mood-anxiety', name: '焦虑', slug: 'anxiety', description: '我停不下来' },
+    listOrigins: async () => [
+      { id: 'origin-racing', name: '脑子停不下来', slug: 'racing', description: '念头很多' },
+    ],
+    listNeeds: async () => [
+      {
+        id: 'need-calm',
+        name: '先安静下来',
+        slug: 'calm',
+        description: '慢一点',
+        reflectionPrompt: '现在有什么安静了一点？',
+      },
     ],
     recommendationCandidates: async () => [
       {
         trackId: 'track-bach',
-        weight: 90,
-        reason: '让秩序缓慢回来。',
+        originWeight: 5,
+        needWeight: 5,
+        originReason: '它先接住过快的念头。',
+        needReason: '它让秩序缓慢回来。',
         track: {
           id: 'track-bach',
           title: '《哥德堡变奏曲》咏叹调',
@@ -36,7 +47,6 @@ function repositoryFixture(): Repository {
             durationText: '约 5 分钟',
             bilibiliUrl: 'https://www.bilibili.com/video/BVtest',
             searchKeywords: '巴赫 哥德堡变奏曲 咏叹调',
-            moods: [{ id: 'mood-anxiety', name: '焦虑', slug: 'anxiety' }],
             guide: {
               title: '先别急着听懂它',
               intro: '让声音先抵达。',
@@ -74,15 +84,17 @@ describe('public API', () => {
     await app.close();
   });
 
-  it('returns a mood recommendation and full guide', async () => {
+  it('returns a double-axis recommendation and full guide', async () => {
     const app = await buildApp({ repository: repositoryFixture() });
     const recommendation = await app.inject({
       method: 'POST',
       url: '/api/recommend',
-      payload: { moodId: 'mood-anxiety', journeyId: 'journey-12345678' },
+      payload: { originId: 'origin-racing', needId: 'need-calm', journeyId: 'journey-12345678' },
     });
     expect(recommendation.statusCode).toBe(200);
     expect(recommendation.json().track.id).toBe('track-bach');
+    expect(recommendation.json().reason).toContain('接住');
+    expect(recommendation.json().reason).toContain('秩序');
     const track = await app.inject({ url: '/api/tracks/track-bach' });
     expect(track.json().guide.reflectionQuestion).toContain('秩序');
     await app.close();
@@ -95,7 +107,8 @@ describe('public API', () => {
     });
     const payload = {
       trackId: 'track-bach',
-      moodId: 'mood-anxiety',
+      originId: 'origin-racing',
+      needId: 'need-calm',
       anonymousId: 'anonymous-12345678',
       journeyId: 'journey-12345678',
       idempotencyKey: 'idempotency-12345678',

@@ -1,6 +1,6 @@
 # 曲径通幽
 
-从用户此刻的心境出发，推荐一首音乐，提供克制的导赏，并在 B站聆听后留下可分享的一句话。
+从用户此刻的体验出发，选择想靠近的方向，推荐一首音乐，提供克制的导赏，并在 B站聆听后留下可分享的一句话。
 
 ## 本地运行
 
@@ -39,7 +39,7 @@ pnpm test:e2e
 bash infra/scripts/check-migrations.sh
 ```
 
-E2E 使用真实 PostgreSQL，并覆盖移动 Chromium、WebKit 的用户闭环及管理员登录。自由输入的心境补充只写入 `localStorage`，不会进入 API 请求。
+E2E 使用真实 PostgreSQL，并覆盖移动 Chromium、WebKit 的用户闭环及管理员登录。自由输入的体验补充只写入 `localStorage`，不会进入 API 请求。
 
 ## 工程结构
 

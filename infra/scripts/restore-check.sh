@@ -13,6 +13,7 @@ docker run -d --name "$CONTAINER" -e POSTGRES_PASSWORD=restore -e POSTGRES_DB=re
 for _ in {1..30}; do docker exec "$CONTAINER" pg_isready -U postgres -d restore >/dev/null 2>&1 && break; sleep 1; done
 docker cp "$WORK/backup.dump" "$CONTAINER:/tmp/backup.dump"
 docker exec "$CONTAINER" pg_restore -U postgres -d restore --clean --if-exists /tmp/backup.dump
-docker exec "$CONTAINER" psql -U postgres -d restore -Atc 'SELECT count(*) FROM "MoodCategory"' | grep -Eq '^[1-9][0-9]*$'
+docker exec "$CONTAINER" psql -U postgres -d restore -Atc 'SELECT count(*) FROM "OriginCategory"' | grep -Eq '^[1-9][0-9]*$'
+docker exec "$CONTAINER" psql -U postgres -d restore -Atc 'SELECT count(*) FROM "NeedCategory"' | grep -Eq '^[1-9][0-9]*$'
 date -u +%FT%TZ > /opt/qujing/last-restore-check-at
 echo 'restore check passed'

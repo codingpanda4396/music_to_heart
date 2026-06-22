@@ -4,7 +4,7 @@ import { api, sendEvent } from './api.js';
 import { ErrorNotice, Loading } from './components.js';
 import { createJourneyStore, type Journey } from './journey.js';
 import { AdminPage } from './pages/AdminPage.js';
-import { HomePage, type Mood } from './pages/HomePage.js';
+import { HomePage, type Need, type Origin } from './pages/HomePage.js';
 import { ListenPage } from './pages/ListenPage.js';
 import { RecommendationPage } from './pages/RecommendationPage.js';
 import { ReflectPage } from './pages/ReflectPage.js';
@@ -15,23 +15,33 @@ function Experience() {
   const store = useMemo(() => createJourneyStore(localStorage), []);
   const navigate = useNavigate();
   const [journey, setJourney] = useState<Journey | null>(() => store.current());
-  const [moods, setMoods] = useState<Mood[] | null>(null);
+  const [origins, setOrigins] = useState<Origin[] | null>(null);
+  const [needs, setNeeds] = useState<Need[] | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     store.anonymousId();
-    api
-      .moods()
-      .then(setMoods)
+    Promise.all([api.origins(), api.needs()])
+      .then(([nextOrigins, nextNeeds]) => {
+        setOrigins(nextOrigins);
+        setNeeds(nextNeeds);
+      })
       .catch((reason: Error) => setError(reason.message));
   }, [store]);
-  const begin = (moodId: string, note: string) => {
-    const next = store.start(moodId, note);
+  const begin = (originId: string, needId: string, note: string) => {
+    const next = store.start(originId, needId, note);
     setJourney(next);
     sendEvent({
-      eventName: 'mood_selected',
+      eventName: 'origin_selected',
       anonymousId: store.anonymousId(),
       journeyId: next.journeyId,
-      moodId,
+      originId,
+    });
+    sendEvent({
+      eventName: 'need_selected',
+      anonymousId: store.anonymousId(),
+      journeyId: next.journeyId,
+      originId,
+      needId,
     });
     navigate('/recommend');
   };
@@ -41,18 +51,39 @@ function Experience() {
     },
     [store],
   );
+  const saveRecommendationContext = useCallback(
+    (trackId: string, reason: string) => {
+      store.setRecommendationContext(trackId, reason);
+      setJourney(store.current());
+    },
+    [store],
+  );
   if (error) return <ErrorNotice message={error} />;
-  if (!moods) return <Loading />;
+  if (!origins || !needs) return <Loading />;
   return (
     <Routes>
-      <Route path="/" element={<HomePage moods={moods} onBegin={begin} />} />
+      <Route path="/" element={<HomePage origins={origins} needs={needs} onBegin={begin} />} />
       <Route
         path="/recommend"
-        element={<RecommendationPage journey={journey} addShown={addShown} />}
+        element={
+          <RecommendationPage
+            journey={journey}
+            addShown={addShown}
+            saveContext={saveRecommendationContext}
+          />
+        }
       />
       <Route path="/track/:id" element={<TrackPage journey={journey} />} />
       <Route path="/listen/:id" element={<ListenPage journey={journey} />} />
-      <Route path="/reflect/:id" element={<ReflectPage journey={journey} />} />
+      <Route
+        path="/reflect/:id"
+        element={
+          <ReflectPage
+            journey={journey}
+            need={needs.find((item) => item.id === journey?.needId) ?? null}
+          />
+        }
+      />
       <Route path="/share/:code" element={<SharePage journey={journey} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

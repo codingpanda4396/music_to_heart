@@ -21,20 +21,29 @@ describe('journey store', () => {
     const first = createJourneyStore(storage);
     const second = createJourneyStore(storage);
     expect(first.anonymousId()).toBe(second.anonymousId());
-    expect(first.start('mood-anxiety', '我现在有点乱').journeyId).not.toBe(
-      first.start('mood-anxiety', '另一次').journeyId,
+    expect(first.start('origin-racing', 'need-calm', '我现在有点乱').journeyId).not.toBe(
+      first.start('origin-racing', 'need-calm', '另一次').journeyId,
     );
   });
 
   it('keeps the free-form note local and tracks shown recommendations', () => {
     const storage = memoryStorage();
     const store = createJourneyStore(storage);
-    const journey = store.start('mood-anxiety', '只留在这里');
+    const journey = store.start('origin-racing', 'need-calm', '只留在这里');
     store.addShownTrack('track-1');
+    store.setRecommendationContext('track-1', '先接住当下，再向安静靠近。');
     expect(store.current()).toMatchObject({
       ...journey,
       note: '只留在这里',
       shownTrackIds: ['track-1'],
+      recommendedTrackId: 'track-1',
+      recommendationContext: '先接住当下，再向安静靠近。',
     });
+  });
+
+  it('discards journeys written with the removed mood model', () => {
+    const storage = memoryStorage();
+    storage.setItem('qj_current_journey', JSON.stringify({ moodId: 'mood-anxiety' }));
+    expect(createJourneyStore(storage).current()).toBeNull();
   });
 });

@@ -3,19 +3,32 @@ import argon2 from 'argon2';
 
 const prisma = new PrismaClient();
 
-const moods = [
-  ['anxiety', '焦虑', '我停不下来'],
-  ['fatigue', '疲惫', '我不想再努力了'],
-  ['loneliness', '孤独', '没人真正理解我'],
-  ['nihilism', '虚无', '我不知道这一切有什么意义'],
-  ['sadness', '悲伤', '我失去了一些东西'],
-  ['out-of-control', '失控', '生活正在脱离我的掌控'],
-  ['irritability', '烦躁', '我压着很多情绪'],
-  ['chaos', '混乱', '我需要重新整理自己'],
-  ['quiet', '安静', '我想从世界中退后一步'],
-  ['strength', '力量', '我需要重新站起来'],
-  ['restart', '重新开始', '我想重新进入生活'],
-  ['sacred', '神圣', '我想靠近更高的东西'],
+const origins = [
+  ['racing-mind', '脑子一直停不下来', '念头很多，很难慢下来'],
+  ['pent-up', '心里堵着一股劲', '有些情绪压着，没有出口'],
+  ['depleted', '什么都不想做', '精力像被慢慢耗空了'],
+  ['disconnected', '像和别人隔着一层', '身边有人，却仍有一点远'],
+  ['letting-go', '有些东西还放不下', '失去或遗憾仍停在心里'],
+  ['lost', '不知道该往哪里走', '事情混在一起，找不到方向'],
+] as const;
+
+const needs = [
+  ['calm', '先安静下来', '让过快的部分慢一点', '现在，有什么比刚才安静了一点？'],
+  [
+    'companionship',
+    '被温柔地陪一会儿',
+    '不急着解决，只是不独自承受',
+    '哪一部分的你，刚才被陪到了一会儿？',
+  ],
+  ['release', '让情绪流动出去', '给堵住的感受一点出口', '有什么终于可以松开或流动一点？'],
+  ['order', '找回一点秩序', '先找到一个可以落脚的位置', '此刻，哪件事开始有了一点先后？'],
+  [
+    'strength',
+    '重新有一点力量',
+    '不必振奋，只找回下一步的力气',
+    '你愿意从这首音乐里带走哪一点力量？',
+  ],
+  ['expanse', '去一个更辽阔的地方', '暂时离开逼近眼前的日常', '刚才，有什么不再那么紧紧逼近你？'],
 ] as const;
 
 const tracks = [
@@ -29,7 +42,7 @@ const tracks = [
     period: '巴洛克',
     durationText: '约 5 分钟',
     searchKeywords: '巴赫 哥德堡变奏曲 咏叹调',
-    moods: ['anxiety', 'out-of-control', 'chaos', 'quiet'],
+    signals: ['anxiety', 'out-of-control', 'chaos', 'quiet'],
     guide: {
       intro: '先别急着听懂它。让开头那条朴素的旋律，在你面前慢慢铺开。',
       firstImpression:
@@ -54,7 +67,7 @@ const tracks = [
     period: '浪漫主义',
     durationText: '约 4 分钟',
     searchKeywords: '舒伯特 小夜曲 Ständchen',
-    moods: ['loneliness', 'sadness', 'fatigue'],
+    signals: ['loneliness', 'sadness', 'fatigue'],
     guide: {
       intro: '把它当成一句在夜里没有说完的话，而不是一首需要被辨认的名曲。',
       firstImpression:
@@ -79,7 +92,7 @@ const tracks = [
     period: '古典主义',
     durationText: '约 9 分钟',
     searchKeywords: '贝多芬 第七交响曲 第二乐章 Allegretto',
-    moods: ['strength', 'restart', 'chaos', 'out-of-control', 'irritability'],
+    signals: ['strength', 'restart', 'chaos', 'out-of-control', 'irritability'],
     guide: {
       intro: '这不是昂扬的胜利音乐。它更像人在沉重中重新学会迈步。',
       firstImpression:
@@ -104,7 +117,7 @@ const tracks = [
     period: '晚期浪漫主义',
     durationText: '约 24 分钟',
     searchKeywords: '马勒 第九交响曲 第四乐章 Adagio',
-    moods: ['nihilism', 'sadness', 'loneliness', 'sacred'],
+    signals: ['nihilism', 'sadness', 'loneliness', 'sacred'],
     guide: {
       intro: '如果你现在无法接受轻快的安慰，这个漫长的告别也许更诚实。',
       firstImpression:
@@ -129,7 +142,7 @@ const tracks = [
     period: '浪漫主义',
     durationText: '约 4 分钟',
     searchKeywords: '福雷 安魂曲 In Paradisum',
-    moods: ['fatigue', 'sadness', 'quiet', 'sacred'],
+    signals: ['fatigue', 'sadness', 'quiet', 'sacred'],
     guide: {
       intro: '这段音乐不描述审判，而像把疲惫的人轻轻送到可以休息的地方。',
       firstImpression:
@@ -154,7 +167,7 @@ const tracks = [
     period: '现代',
     durationText: '约 9 分钟',
     searchKeywords: 'Arvo Pärt Spiegel im Spiegel',
-    moods: ['anxiety', 'quiet', 'sacred', 'nihilism', 'out-of-control'],
+    signals: ['anxiety', 'quiet', 'sacred', 'nihilism', 'out-of-control'],
     guide: {
       intro: '把速度交给音乐。你只需要跟随一条缓慢的线，看它去往哪里。',
       firstImpression:
@@ -179,7 +192,7 @@ const tracks = [
     period: '当代',
     durationText: '约 4 分钟',
     searchKeywords: 'Brian Eno An Ending Ascent',
-    moods: ['fatigue', 'anxiety', 'quiet', 'chaos'],
+    signals: ['fatigue', 'anxiety', 'quiet', 'chaos'],
     guide: {
       intro: '先不要把它当成一首歌。把它当成房间里逐渐改变的空气。',
       firstImpression:
@@ -204,7 +217,7 @@ const tracks = [
     period: '当代',
     durationText: '约 5 分钟',
     searchKeywords: '坂本龙一 Aqua 钢琴',
-    moods: ['fatigue', 'loneliness', 'sadness', 'quiet'],
+    signals: ['fatigue', 'loneliness', 'sadness', 'quiet'],
     guide: {
       intro: '它像水，不替你说话，只让那些已经很重的东西暂时浮起来。',
       firstImpression:
@@ -229,7 +242,7 @@ const tracks = [
     period: '当代',
     durationText: '约 4 分钟',
     searchKeywords: '久石让 One Summer’s Day 那个夏天',
-    moods: ['restart', 'fatigue', 'loneliness', 'strength'],
+    signals: ['restart', 'fatigue', 'loneliness', 'strength'],
     guide: {
       intro: '把它当作一道通往旧日的门。回忆不是退回过去，也可能帮助你重新出发。',
       firstImpression:
@@ -254,7 +267,7 @@ const tracks = [
     period: null,
     durationText: '约 8 分钟',
     searchKeywords: '古琴 流水 名家 演奏',
-    moods: ['irritability', 'chaos', 'strength', 'restart', 'out-of-control'],
+    signals: ['irritability', 'chaos', 'strength', 'restart', 'out-of-control'],
     guide: {
       intro: '不要只寻找“山水意境”。先听一股力量怎样改变形态，却始终向前。',
       firstImpression:
@@ -279,7 +292,7 @@ const tracks = [
     period: null,
     durationText: '约 7 分钟',
     searchKeywords: '古琴 平沙落雁 名家 演奏',
-    moods: ['irritability', 'anxiety', 'quiet', 'sacred'],
+    signals: ['irritability', 'anxiety', 'quiet', 'sacred'],
     guide: {
       intro: '把视线放远一点。音乐会为眼前的烦扰重新安排尺度。',
       firstImpression:
@@ -304,7 +317,7 @@ const tracks = [
     period: null,
     durationText: '约 9 分钟',
     searchKeywords: '琵琶 春江花月夜 传统名曲',
-    moods: ['sadness', 'loneliness', 'sacred', 'restart', 'nihilism'],
+    signals: ['sadness', 'loneliness', 'sacred', 'restart', 'nihilism'],
     guide: {
       intro: '让江水、月色与夜晚先成为一个空间，再把自己的情绪放进去。',
       firstImpression:
@@ -321,26 +334,55 @@ const tracks = [
   },
 ] as const;
 
-const moodReason: Record<string, string> = {
-  anxiety: '它不会增加刺激，而是用清晰的呼吸和结构为焦虑留出边界。',
-  fatigue: '它不要求你振作，先允许注意力和身体慢慢卸下重量。',
-  loneliness: '它不急着填满孤独，而是提供一段准确、克制的陪伴。',
-  nihilism: '它不提供轻率答案，却让你在空白与消逝中仍感到人的深度。',
-  sadness: '它让悲伤保持真实，同时避免把你推向更剧烈的宣泄。',
-  'out-of-control': '它提示秩序不等于控制一切，而是找到仍能依靠的方向。',
-  irritability: '它把过近、过热的注意力慢慢拉开，让情绪重新获得尺度。',
-  chaos: '稳定的结构与流动会帮助散乱的注意力重新找到落点。',
-  quiet: '声音中的停顿和余白，允许你暂时从外界退后一步。',
-  strength: '它的力量来自持续与展开，而不是强迫自己立刻昂扬。',
-  restart: '它把开始还原为下一个诚实而可完成的动作。',
-  sacred: '它保留超越日常的空间，却不要求你接受单一解释。',
+const originSignalMap: Record<string, readonly string[]> = {
+  'racing-mind': ['anxiety', 'out-of-control'],
+  'pent-up': ['irritability', 'out-of-control'],
+  depleted: ['fatigue'],
+  disconnected: ['loneliness', 'quiet'],
+  'letting-go': ['sadness'],
+  lost: ['chaos', 'nihilism'],
 };
 
-for (const [index, [slug, name, description]] of moods.entries()) {
-  await prisma.moodCategory.upsert({
+const needSignalMap: Record<string, readonly string[]> = {
+  calm: ['quiet', 'anxiety'],
+  companionship: ['loneliness', 'sadness'],
+  release: ['irritability', 'sadness'],
+  order: ['chaos', 'out-of-control'],
+  strength: ['strength', 'restart'],
+  expanse: ['sacred', 'nihilism'],
+};
+
+const originReasons: Record<string, string> = {
+  'racing-mind': '它不会继续增加刺激，而是用声音的呼吸与边界接住过快的念头。',
+  'pent-up': '它不催你立刻宣泄，先让压住的情绪获得可以流动的空间。',
+  depleted: '它不要求你振作，只邀请注意力在很少的力气里停留一会儿。',
+  disconnected: '它保留人与声音之间恰当的距离，提供一段不侵入的陪伴。',
+  'letting-go': '它允许失去与遗憾保持真实，不急着用明亮覆盖它们。',
+  lost: '它用可以跟随的声音线索，为暂时找不到方向的注意力提供落点。',
+};
+
+const needReasons: Record<string, string> = {
+  calm: '声音中的停顿与克制，会为你留出一点慢下来的余地。',
+  companionship: '它不试图替你回答，只用持续的声音陪你把这一刻经过。',
+  release: '音乐的展开给感受一条向外流动的路径，而不要求剧烈宣泄。',
+  order: '重复、层次与结构让散开的注意力重新找到可以依靠的位置。',
+  strength: '它的力量来自持续和展开，帮助你靠近下一步，而不是强迫昂扬。',
+  expanse: '它把眼前的一刻放进更大的时间与空间，让日常暂时不再逼近。',
+};
+
+for (const [index, [slug, name, description]] of origins.entries()) {
+  await prisma.originCategory.upsert({
     where: { slug },
-    create: { id: `mood-${slug}`, slug, name, description, sortOrder: index + 1 },
+    create: { id: `origin-${slug}`, slug, name, description, sortOrder: index + 1 },
     update: { name, description, sortOrder: index + 1 },
+  });
+}
+
+for (const [index, [slug, name, description, reflectionPrompt]] of needs.entries()) {
+  await prisma.needCategory.upsert({
+    where: { slug },
+    create: { id: `need-${slug}`, slug, name, description, reflectionPrompt, sortOrder: index + 1 },
+    update: { name, description, reflectionPrompt, sortOrder: index + 1 },
   });
 }
 
@@ -380,13 +422,26 @@ for (const track of tracks) {
     create: { trackId: saved.id, title: '先别急着听懂', ...track.guide },
     update: { title: '先别急着听懂', ...track.guide },
   });
-  await prisma.trackMood.deleteMany({ where: { trackId: saved.id } });
-  await prisma.trackMood.createMany({
-    data: track.moods.map((slug, index) => ({
+  await prisma.trackOrigin.deleteMany({ where: { trackId: saved.id } });
+  await prisma.trackOrigin.createMany({
+    data: origins.map(([slug]) => ({
       trackId: saved.id,
-      moodId: `mood-${slug}`,
-      weight: 92 - index * 5,
-      reason: moodReason[slug]!,
+      originId: `origin-${slug}`,
+      weight: originSignalMap[slug]!.some((signal) => track.signals.includes(signal as never))
+        ? 5
+        : 2,
+      reason: `${track.title}：${originReasons[slug]}`,
+    })),
+  });
+  await prisma.trackNeed.deleteMany({ where: { trackId: saved.id } });
+  await prisma.trackNeed.createMany({
+    data: needs.map(([slug]) => ({
+      trackId: saved.id,
+      needId: `need-${slug}`,
+      weight: needSignalMap[slug]!.some((signal) => track.signals.includes(signal as never))
+        ? 5
+        : 2,
+      reason: `${track.title}：${needReasons[slug]}`,
     })),
   });
 }

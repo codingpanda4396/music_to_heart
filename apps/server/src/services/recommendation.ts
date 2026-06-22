@@ -1,20 +1,21 @@
 export interface WeightedCandidate {
   trackId: string;
-  weight: number;
+  originWeight: number;
+  needWeight: number;
 }
 
-export function chooseRecommendation<T extends WeightedCandidate>(
+export function rankRecommendations<T extends WeightedCandidate>(
   candidates: T[],
   excludedTrackIds: string[],
-  random: () => number = Math.random,
-): T {
-  if (candidates.length === 0) throw new Error('没有可推荐的曲目');
-
+): T[] {
   const excluded = new Set(excludedTrackIds);
-  const available = candidates.filter((candidate) => !excluded.has(candidate.trackId));
-  const pool = [...(available.length > 0 ? available : candidates)]
-    .sort((left, right) => right.weight - left.weight)
-    .slice(0, 3);
-  const index = Math.min(Math.floor(random() * pool.length), pool.length - 1);
-  return pool[index]!;
+  return candidates
+    .filter((candidate) => !excluded.has(candidate.trackId))
+    .sort((left, right) => {
+      const scoreDifference =
+        right.originWeight * 0.45 +
+        right.needWeight * 0.55 -
+        (left.originWeight * 0.45 + left.needWeight * 0.55);
+      return scoreDifference || left.trackId.localeCompare(right.trackId);
+    });
 }

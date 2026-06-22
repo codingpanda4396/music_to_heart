@@ -2,24 +2,36 @@ import { describe, expect, it } from 'vitest';
 import { validateCatalog } from './catalog-validation.js';
 
 describe('catalog validation', () => {
-  it('requires three published guided candidates for every mood', () => {
+  it('requires three published guided candidates for every origin and need combination', () => {
     expect(
       validateCatalog(
-        [{ id: 'mood-1', name: '焦虑' }],
+        [{ id: 'origin-1', name: '脑子停不下来' }],
+        [{ id: 'need-1', name: '先安静下来' }],
         [
-          { moodId: 'mood-1', trackId: 'a', published: true, hasGuide: true },
-          { moodId: 'mood-1', trackId: 'b', published: true, hasGuide: true },
+          { originId: 'origin-1', trackId: 'a', published: true, hasGuide: true },
+          { originId: 'origin-1', trackId: 'b', published: true, hasGuide: true },
+        ],
+        [
+          { needId: 'need-1', trackId: 'a', published: true, hasGuide: true },
+          { needId: 'need-1', trackId: 'b', published: true, hasGuide: true },
         ],
       ),
-    ).toEqual(['焦虑：只有 2 个可用候选，至少需要 3 个']);
+    ).toEqual(['脑子停不下来 → 先安静下来：只有 2 个可用候选，至少需要 3 个']);
   });
 
-  it('accepts a complete mood catalog', () => {
+  it('counts only tracks present in both sides of the combination', () => {
     expect(
       validateCatalog(
-        [{ id: 'mood-1', name: '焦虑' }],
-        ['a', 'b', 'c'].map((trackId) => ({
-          moodId: 'mood-1',
+        [{ id: 'origin-1', name: '脑子停不下来' }],
+        [{ id: 'need-1', name: '先安静下来' }],
+        ['a', 'b', 'c', 'origin-only'].map((trackId) => ({
+          originId: 'origin-1',
+          trackId,
+          published: true,
+          hasGuide: true,
+        })),
+        ['a', 'b', 'c', 'need-only'].map((trackId) => ({
+          needId: 'need-1',
           trackId,
           published: true,
           hasGuide: true,

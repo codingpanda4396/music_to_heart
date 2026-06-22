@@ -12,7 +12,6 @@ export interface TrackSummary {
 }
 
 export interface TrackDetail extends TrackSummary {
-  moods: Array<{ id: string; name: string; slug: string }>;
   guide: {
     title: string;
     intro: string;
@@ -31,14 +30,14 @@ export interface AdminTrackListItem extends TrackSummary {
   period: string | null;
   bilibiliBvid: string | null;
   difficulty: number;
-  trackMoods: Array<{ moodId: string; weight: number; reason: string }>;
+  trackOrigins: Array<{ originId: string; weight: number; reason: string }>;
+  trackNeeds: Array<{ needId: string; weight: number; reason: string }>;
   guide: TrackDetail['guide'];
 }
 
 export interface AdminReflectionItem {
   id: string;
   content: string;
-  mood: { name: string };
   track: { title: string; composer: string };
 }
 
@@ -47,6 +46,11 @@ export interface AdminMetrics {
   reflections: number;
   shareIntents: number;
   shareVisits: number;
+}
+export interface CatalogCoverage {
+  total: number;
+  covered: number;
+  errors: string[];
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -66,8 +70,18 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  moods: () =>
-    request<Array<{ id: string; name: string; slug: string; description: string }>>('/api/moods'),
+  origins: () =>
+    request<Array<{ id: string; name: string; slug: string; description: string }>>('/api/origins'),
+  needs: () =>
+    request<
+      Array<{
+        id: string;
+        name: string;
+        slug: string;
+        description: string;
+        reflectionPrompt: string;
+      }>
+    >('/api/needs'),
   recommend: (input: RecommendRequest) =>
     request<{ track: TrackSummary; reason: string }>('/api/recommend', {
       method: 'POST',
@@ -94,6 +108,7 @@ export const api = {
   adminTracks: () => request<AdminTrackListItem[]>('/api/admin/tracks'),
   adminReflections: () => request<AdminReflectionItem[]>('/api/admin/reflections'),
   adminMetrics: () => request<AdminMetrics>('/api/admin/metrics'),
+  adminCatalogCoverage: () => request<CatalogCoverage>('/api/admin/catalog-coverage'),
   adminSaveTrack: (track: unknown, id?: string) =>
     request<{ id: string }>(id ? `/api/admin/tracks/${id}` : '/api/admin/tracks', {
       method: id ? 'PUT' : 'POST',

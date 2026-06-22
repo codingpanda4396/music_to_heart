@@ -87,7 +87,7 @@ sudo /opt/qujing/bin/backup.sh
 sudo /opt/qujing/bin/weekly-restore-check.sh
 ```
 
-备份每 6 小时执行，先以 AES-256/PBKDF2 加密，再上传 OSS。每周恢复到隔离的临时 PostgreSQL 容器并检查心境表。目标 RPO ≤ 6 小时、RTO ≤ 2 小时。
+备份每 6 小时执行，先以 AES-256/PBKDF2 加密，再上传 OSS。每周恢复到隔离的临时 PostgreSQL 容器并检查起点与去向分类表。目标 RPO ≤ 6 小时、RTO ≤ 2 小时。
 
 ## 6. 外部监控
 

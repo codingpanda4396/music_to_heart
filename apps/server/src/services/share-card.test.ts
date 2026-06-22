@@ -6,7 +6,6 @@ const reflection = {
   content: '<script>alert(1)</script>可以慢一点。',
   shareCode: 'share-code-12345678',
   track: { title: '《哥德堡变奏曲》咏叹调', composer: 'J. S. Bach' },
-  mood: { name: '焦虑', slug: 'anxiety' },
 };
 
 describe('share rendering', () => {
@@ -16,6 +15,7 @@ describe('share rendering', () => {
     expect(html).toContain('&lt;script&gt;');
     expect(html).toContain('noindex, nofollow');
     expect(html).toContain('/s/share-code-12345678/card.png');
+    expect(html).not.toContain('焦虑');
   });
 
   it('renders a 900 by 1200 PNG card', async () => {

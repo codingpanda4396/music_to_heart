@@ -8,7 +8,7 @@ import Fastify from 'fastify';
 import { ZodError } from 'zod';
 import { registerAdminRoutes, type AdminRepository } from './admin.js';
 import type { Repository } from './repository.js';
-import { chooseRecommendation } from './services/recommendation.js';
+import { rankRecommendations } from './services/recommendation.js';
 import { renderShareCard, renderShareHtml } from './services/share-card.js';
 
 export interface AppOptions {
@@ -66,14 +66,21 @@ export async function buildApp(options: AppOptions) {
   });
   app.get('/version', async () => ({ version: options.version ?? 'dev' }));
 
-  app.get('/api/moods', async () => options.repository.listMoods());
+  app.get('/api/origins', async () => options.repository.listOrigins());
+  app.get('/api/needs', async () => options.repository.listNeeds());
 
   app.post('/api/recommend', async (request, reply) => {
     const input = recommendRequestSchema.parse(request.body);
-    const candidates = await options.repository.recommendationCandidates(input.moodId);
-    if (candidates.length === 0) return reply.code(404).send({ error: '这个心境暂时没有曲目' });
-    const selected = chooseRecommendation(candidates, input.excludeTrackIds);
-    return { track: selected.track, reason: selected.reason };
+    const candidates = await options.repository.recommendationCandidates(
+      input.originId,
+      input.needId,
+    );
+    const selected = rankRecommendations(candidates, input.excludeTrackIds)[0];
+    if (!selected) return reply.code(404).send({ error: '适合这段旅程的曲目已经看完了' });
+    return {
+      track: selected.track,
+      reason: `${selected.originReason}\n\n${selected.needReason}`,
+    };
   });
 
   app.get<{ Params: { id: string } }>('/api/tracks/:id', async (request, reply) => {

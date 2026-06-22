@@ -28,11 +28,20 @@ export const adminTrackSchema = z
     searchKeywords: z.string().trim().min(1).max(300),
     difficulty: z.number().int().min(1).max(5),
     status: z.enum(['DRAFT', 'PUBLISHED']),
-    moods: z
+    origins: z
       .array(
         z.object({
-          moodId: z.string().min(1),
-          weight: z.number().int().min(1).max(100),
+          originId: z.string().min(1),
+          weight: z.number().int().min(1).max(5),
+          reason: z.string().trim().min(1).max(300),
+        }),
+      )
+      .min(1),
+    needs: z
+      .array(
+        z.object({
+          needId: z.string().min(1),
+          weight: z.number().int().min(1).max(5),
           reason: z.string().trim().min(1).max(300),
         }),
       )
@@ -49,11 +58,11 @@ export const adminTrackSchema = z
     }),
   })
   .superRefine((value, context) => {
-    if (value.status === 'PUBLISHED' && value.moods.length < 3) {
+    if (value.status === 'PUBLISHED' && (value.origins.length < 1 || value.needs.length < 1)) {
       context.addIssue({
         code: 'custom',
-        path: ['moods'],
-        message: '发布曲目至少关联三个心境',
+        path: ['origins'],
+        message: '发布曲目必须同时关联起点与去向',
       });
     }
   });
@@ -75,6 +84,7 @@ export interface AdminRepository {
     shareIntents: number;
     shareVisits: number;
   }>;
+  catalogCoverage(): Promise<{ total: number; covered: number; errors: string[] }>;
 }
 
 function signSession(adminId: string, secret: string): string {
@@ -154,4 +164,5 @@ export async function registerAdminRoutes(
   );
   app.get('/api/admin/reflections', async () => repository.listReflections());
   app.get('/api/admin/metrics', async () => repository.metrics());
+  app.get('/api/admin/catalog-coverage', async () => repository.catalogCoverage());
 }

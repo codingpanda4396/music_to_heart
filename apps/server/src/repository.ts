@@ -12,7 +12,6 @@ export interface PublicTrack {
 }
 
 export interface TrackDetail extends PublicTrack {
-  moods: Array<{ id: string; name: string; slug: string }>;
   guide: {
     title: string;
     intro: string;
@@ -28,7 +27,8 @@ export interface TrackDetail extends PublicTrack {
 export interface StoredReflection {
   id: string;
   trackId: string;
-  moodId: string;
+  originId: string;
+  needId: string;
   anonymousId: string;
   journeyId: string;
   idempotencyKey: string;
@@ -37,14 +37,29 @@ export interface StoredReflection {
   deletionTokenHash: string;
   createdAt: Date;
   track?: Pick<PublicTrack, 'title' | 'composer'>;
-  mood?: { name: string; slug: string };
+}
+
+export interface RecommendationCandidate {
+  trackId: string;
+  originWeight: number;
+  needWeight: number;
+  originReason: string;
+  needReason: string;
+  track: PublicTrack;
 }
 
 export interface Repository {
-  listMoods(): Promise<Array<{ id: string; name: string; slug: string; description: string }>>;
-  recommendationCandidates(
-    moodId: string,
-  ): Promise<Array<{ trackId: string; weight: number; reason: string; track: PublicTrack }>>;
+  listOrigins(): Promise<Array<{ id: string; name: string; slug: string; description: string }>>;
+  listNeeds(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      slug: string;
+      description: string;
+      reflectionPrompt: string;
+    }>
+  >;
+  recommendationCandidates(originId: string, needId: string): Promise<RecommendationCandidate[]>;
   getTrack(id: string): Promise<TrackDetail | null>;
   findReflectionByIdempotency(key: string): Promise<StoredReflection | null>;
   createReflection(data: Omit<StoredReflection, 'id' | 'createdAt'>): Promise<StoredReflection>;

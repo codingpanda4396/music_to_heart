@@ -14,7 +14,8 @@ export function SharePage({ journey }: { journey: Journey | null }) {
       eventName: 'share_intent',
       anonymousId: localStorage.getItem('qj_anonymous_id')!,
       journeyId: journey.journeyId,
-      moodId: journey.moodId,
+      originId: journey.originId,
+      needId: journey.needId,
       shareCode: code,
     });
   const share = async () => {

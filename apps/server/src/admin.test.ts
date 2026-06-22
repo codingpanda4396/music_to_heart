@@ -5,7 +5,8 @@ import { adminTrackSchema, type AdminRepository } from './admin.js';
 import type { Repository } from './repository.js';
 
 const publicRepository = {
-  listMoods: async () => [],
+  listOrigins: async () => [],
+  listNeeds: async () => [],
   recommendationCandidates: async () => [],
   getTrack: async () => null,
   findReflectionByIdempotency: async () => null,
@@ -27,6 +28,7 @@ describe('admin API', () => {
       saveTrack: async () => ({ id: 'track-1' }),
       listReflections: async () => [],
       metrics: async () => ({ visitors: 0, reflections: 0, shareIntents: 0, shareVisits: 0 }),
+      catalogCoverage: async () => ({ total: 36, covered: 36, errors: [] }),
     };
     const app = await buildApp({
       repository: publicRepository,
@@ -71,6 +73,11 @@ describe('admin API', () => {
     });
     expect(tracks.statusCode).toBe(200);
     expect(tracks.json()[0].title).toBe('测试曲目');
+    const coverage = await app.inject({
+      url: '/api/admin/catalog-coverage',
+      headers: { cookie: `qj_admin=${cookie?.value}` },
+    });
+    expect(coverage.json()).toEqual({ total: 36, covered: 36, errors: [] });
     await app.close();
   });
 
@@ -84,7 +91,8 @@ describe('admin API', () => {
       searchKeywords: '测试',
       difficulty: 1,
       status: 'DRAFT',
-      moods: [{ moodId: 'mood-1', weight: 1, reason: '测试' }],
+      origins: [{ originId: 'origin-1', weight: 1, reason: '测试' }],
+      needs: [{ needId: 'need-1', weight: 1, reason: '测试' }],
       guide: {
         title: '测试',
         intro: '测试',

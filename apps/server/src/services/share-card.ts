@@ -4,7 +4,6 @@ interface ShareReflection {
   content: string;
   shareCode: string;
   track?: { title: string; composer: string };
-  mood?: { name: string; slug: string };
 }
 
 function escapeHtml(value: string): string {
@@ -28,7 +27,7 @@ function lines(value: string, width = 14): string[] {
 
 export function renderShareHtml(reflection: ShareReflection, origin: string): string {
   const content = escapeHtml(reflection.content);
-  const title = `${reflection.mood?.name ?? '此刻'} · 我听见`;
+  const title = '曲径通幽 · 我听见';
   const cardUrl = `${origin}/s/${reflection.shareCode}/card.png`;
   return `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -36,7 +35,7 @@ export function renderShareHtml(reflection: ShareReflection, origin: string): st
 <meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${content}">
 <meta property="og:image" content="${cardUrl}"><meta property="og:type" content="article">
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#080c0b;color:#eee9dc;font-family:system-ui,sans-serif}.card{box-sizing:border-box;width:min(88vw,420px);aspect-ratio:3/4;padding:34px;background:linear-gradient(155deg,#1b2924,#080c0b);display:flex;flex-direction:column;box-shadow:0 24px 80px #0008}.brand{font-size:11px;letter-spacing:.3em;opacity:.65}.label{margin-top:18%;font-size:12px;color:#b9b3a4}.words{font-family:serif;font-size:clamp(22px,6vw,31px);line-height:1.7;white-space:pre-wrap}.meta{margin-top:auto;padding-top:20px;border-top:1px solid #ffffff25;color:#bbb6aa;font-size:12px;line-height:1.7}.enter{color:#d8d0bf;margin-top:18px}</style></head>
-<body><main class="card"><div class="brand">曲径通幽</div><div class="label">我听见</div><p class="words">${content}</p><div class="meta">${escapeHtml(reflection.mood?.name ?? '')} · ${escapeHtml(reflection.track?.composer ?? '')}<br>${escapeHtml(reflection.track?.title ?? '')}</div><a class="enter" href="/">从此刻心境，进入一首音乐 →</a></main></body></html>`;
+<body><main class="card"><div class="brand">曲径通幽</div><div class="label">我听见</div><p class="words">${content}</p><div class="meta">${escapeHtml(reflection.track?.composer ?? '')}<br>${escapeHtml(reflection.track?.title ?? '')}</div><a class="enter" href="/">从此刻出发，进入一首音乐 →</a></main></body></html>`;
 }
 
 export async function renderShareCard(reflection: ShareReflection): Promise<Buffer> {
@@ -54,7 +53,7 @@ export async function renderShareCard(reflection: ShareReflection): Promise<Buff
     <text x="78" y="90" class="sans muted" font-size="22" letter-spacing="8">曲径通幽</text>
     <text x="78" y="230" class="serif muted" font-size="25">我听见</text>${text}
     <line x1="78" x2="822" y1="1020" y2="1020" stroke="#ffffff" stroke-opacity=".15"/>
-    <text x="78" y="1072" class="sans muted" font-size="23">${escapeHtml(reflection.mood?.name ?? '')} · ${escapeHtml(reflection.track?.composer ?? '')}</text>
+    <text x="78" y="1072" class="sans muted" font-size="23">${escapeHtml(reflection.track?.composer ?? '')}</text>
     <text x="78" y="1112" class="sans muted" font-size="23">${escapeHtml(reflection.track?.title ?? '')}</text>
   </svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();

@@ -1,8 +1,11 @@
 export interface Journey {
-  moodId: string;
+  originId: string;
+  needId: string;
   note: string;
   journeyId: string;
   shownTrackIds: string[];
+  recommendedTrackId?: string;
+  recommendationContext?: string;
 }
 
 const anonymousKey = 'qj_anonymous_id';
@@ -17,9 +20,10 @@ export function createJourneyStore(storage: Storage) {
       storage.setItem(anonymousKey, value);
       return value;
     },
-    start(moodId: string, note: string): Journey {
+    start(originId: string, needId: string, note: string): Journey {
       const journey = {
-        moodId,
+        originId,
+        needId,
         note,
         journeyId: `journey-${crypto.randomUUID()}`,
         shownTrackIds: [],
@@ -31,7 +35,17 @@ export function createJourneyStore(storage: Storage) {
       const value = storage.getItem(journeyKey);
       if (!value) return null;
       try {
-        return JSON.parse(value) as Journey;
+        const parsed = JSON.parse(value) as Partial<Journey>;
+        if (
+          !parsed.originId ||
+          !parsed.needId ||
+          !parsed.journeyId ||
+          !Array.isArray(parsed.shownTrackIds)
+        ) {
+          storage.removeItem(journeyKey);
+          return null;
+        }
+        return parsed as Journey;
       } catch {
         storage.removeItem(journeyKey);
         return null;
@@ -43,6 +57,14 @@ export function createJourneyStore(storage: Storage) {
       storage.setItem(
         journeyKey,
         JSON.stringify({ ...current, shownTrackIds: [...current.shownTrackIds, trackId] }),
+      );
+    },
+    setRecommendationContext(trackId: string, recommendationContext: string) {
+      const current = this.current();
+      if (!current) return;
+      storage.setItem(
+        journeyKey,
+        JSON.stringify({ ...current, recommendedTrackId: trackId, recommendationContext }),
       );
     },
   };

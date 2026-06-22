@@ -1,24 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { chooseRecommendation } from './recommendation.js';
+import { rankRecommendations } from './recommendation.js';
 
 const candidates = [
-  { trackId: 'a', weight: 90 },
-  { trackId: 'b', weight: 80 },
-  { trackId: 'c', weight: 70 },
-  { trackId: 'd', weight: 20 },
+  { trackId: 'a', originWeight: 5, needWeight: 3 },
+  { trackId: 'b', originWeight: 3, needWeight: 5 },
+  { trackId: 'c', originWeight: 4, needWeight: 4 },
 ];
 
-describe('chooseRecommendation', () => {
-  it('selects from the three strongest non-excluded candidates', () => {
-    expect(chooseRecommendation(candidates, ['a'], () => 0).trackId).toBe('b');
-    expect(chooseRecommendation(candidates, [], () => 0.999).trackId).toBe('c');
+describe('rankRecommendations', () => {
+  it('ranks deterministically with the need weighted at 55 percent', () => {
+    expect(rankRecommendations(candidates, []).map((item) => item.trackId)).toEqual([
+      'b',
+      'c',
+      'a',
+    ]);
   });
 
-  it('falls back to the full list after all candidates were shown', () => {
-    expect(chooseRecommendation(candidates, ['a', 'b', 'c', 'd'], () => 0).trackId).toBe('a');
+  it('uses track id as a stable tie breaker and excludes shown tracks', () => {
+    const tied = [
+      { trackId: 'z', originWeight: 4, needWeight: 4 },
+      { trackId: 'a', originWeight: 4, needWeight: 4 },
+    ];
+    expect(rankRecommendations(tied, ['a']).map((item) => item.trackId)).toEqual(['z']);
   });
 
-  it('rejects an empty catalog', () => {
-    expect(() => chooseRecommendation([], [], () => 0)).toThrow('没有可推荐的曲目');
+  it('returns an empty list when every eligible track was shown', () => {
+    expect(rankRecommendations(candidates, ['a', 'b', 'c'])).toEqual([]);
   });
 });

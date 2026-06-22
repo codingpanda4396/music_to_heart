@@ -18,7 +18,8 @@ export function TrackPage({ journey }: { journey: Journey | null }) {
             eventName: 'track_viewed',
             anonymousId: localStorage.getItem('qj_anonymous_id')!,
             journeyId: journey.journeyId,
-            moodId: journey.moodId,
+            originId: journey.originId,
+            needId: journey.needId,
             trackId: id,
           });
       })
@@ -36,7 +37,12 @@ export function TrackPage({ journey }: { journey: Journey | null }) {
     ['第一感受', track.guide.firstImpression],
     ['一点必要知识', track.guide.background],
     ['听的时候注意什么', track.guide.listeningPoints],
-    ['它与你此刻的关系', track.guide.emotionalInterpretation],
+    [
+      '它与你此刻的关系',
+      journey?.recommendedTrackId === track.id && journey.recommendationContext
+        ? journey.recommendationContext
+        : track.guide.emotionalInterpretation,
+    ],
     ['听后问题', track.guide.reflectionQuestion],
   ];
   return (
@@ -44,11 +50,6 @@ export function TrackPage({ journey }: { journey: Journey | null }) {
       <article className="guide">
         <p className="composer">{track.composer}</p>
         <h1>{track.title}</h1>
-        <div className="mood-tags">
-          {track.moods.map((mood) => (
-            <span key={mood.id}>{mood.name}</span>
-          ))}
-        </div>
         {sections.map(([heading, body], index) => (
           <section key={heading}>
             <span className="section-number">0{index + 1}</span>

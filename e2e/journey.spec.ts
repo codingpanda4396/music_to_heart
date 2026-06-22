@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-test('mobile visitor completes the mood-to-share journey', async ({ page, context }) => {
+test('mobile visitor completes the origin-to-need journey', async ({ page, context }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '此刻，你想把什么交给音乐？' })).toBeVisible();
-  await page.getByRole('radio', { name: /焦虑/ }).click();
+  await expect(page.getByRole('heading', { name: '此刻，你更接近哪一种？' })).toBeVisible();
+  await page.getByRole('radio', { name: /脑子一直停不下来/ }).click();
+  await expect(page.getByRole('heading', { name: '此刻，你更需要什么？' })).toBeVisible();
+  await page.getByRole('radio', { name: /先安静下来/ }).click();
   await page.getByLabel('也可以留下一句话').fill('这句话只留在本机');
   await page.getByRole('button', { name: '为我推荐一首音乐' }).click();
   await expect(page.getByText('此刻推荐')).toBeVisible();

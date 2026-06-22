@@ -15,7 +15,8 @@ export function ListenPage({ journey }: { journey: Journey | null }) {
     ? {
         anonymousId: localStorage.getItem('qj_anonymous_id')!,
         journeyId: journey.journeyId,
-        moodId: journey.moodId,
+        originId: journey.originId,
+        needId: journey.needId,
         trackId: id,
       }
     : null;

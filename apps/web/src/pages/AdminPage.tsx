@@ -4,6 +4,7 @@ import {
   type AdminMetrics,
   type AdminReflectionItem,
   type AdminTrackListItem,
+  type CatalogCoverage,
 } from '../api.js';
 import { ErrorNotice } from '../components.js';
 
@@ -19,7 +20,8 @@ const blankTrack = {
   searchKeywords: '',
   difficulty: 1,
   status: 'DRAFT',
-  moods: [],
+  origins: [],
+  needs: [],
   guide: {
     title: '先别急着听懂',
     intro: '',
@@ -47,8 +49,13 @@ function editableTrack(value: AdminTrackListItem | null) {
     searchKeywords: value.searchKeywords,
     difficulty: value.difficulty,
     status: value.status,
-    moods: value.trackMoods.map((item) => ({
-      moodId: item.moodId,
+    origins: value.trackOrigins.map((item) => ({
+      originId: item.originId,
+      weight: item.weight,
+      reason: item.reason,
+    })),
+    needs: value.trackNeeds.map((item) => ({
+      needId: item.needId,
       weight: item.weight,
       reason: item.reason,
     })),
@@ -63,18 +70,21 @@ export function AdminPage() {
   const [tracks, setTracks] = useState<AdminTrackListItem[]>([]);
   const [reflections, setReflections] = useState<AdminReflectionItem[]>([]);
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+  const [coverage, setCoverage] = useState<CatalogCoverage | null>(null);
   const [editor, setEditor] = useState(JSON.stringify(blankTrack, null, 2));
   const [error, setError] = useState('');
   const load = async () => {
     try {
-      const [nextTracks, nextReflections, nextMetrics] = await Promise.all([
+      const [nextTracks, nextReflections, nextMetrics, nextCoverage] = await Promise.all([
         api.adminTracks(),
         api.adminReflections(),
         api.adminMetrics(),
+        api.adminCatalogCoverage(),
       ]);
       setTracks(nextTracks);
       setReflections(nextReflections);
       setMetrics(nextMetrics);
+      setCoverage(nextCoverage);
       setAuthenticated(true);
     } catch {
       setAuthenticated(false);
@@ -148,6 +158,15 @@ export function AdminPage() {
             </div>
           ))}
       </section>
+      {coverage && (
+        <section>
+          <h2>组合覆盖</h2>
+          <p>
+            {coverage.covered} / {coverage.total} 个起点与去向组合拥有至少三首候选。
+          </p>
+          {coverage.errors.length > 0 && <pre>{coverage.errors.join('\n')}</pre>}
+        </section>
+      )}
       <div className="admin-columns">
         <section>
           <div className="section-heading">
@@ -168,7 +187,7 @@ export function AdminPage() {
         </section>
         <section className="editor">
           <h2>编辑 JSON</h2>
-          <p>发布曲目至少关联三个心境。所有字段保存前均由服务端严格校验。</p>
+          <p>发布曲目必须同时配置起点与去向关系，权重范围为 1–5。</p>
           <textarea
             aria-label="曲目内容"
             value={editor}
@@ -186,9 +205,7 @@ export function AdminPage() {
           {reflections.map((item) => (
             <article key={item.id}>
               <p>{item.content}</p>
-              <span>
-                {item.mood.name} · {item.track.title}
-              </span>
+              <span>{item.track.title}</span>
             </article>
           ))}
         </div>

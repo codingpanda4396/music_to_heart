@@ -2,6 +2,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import type { AnalyticsEvent } from '@qujing/shared';
 import type { AdminRepository, AdminTrackInput } from './admin.js';
 import type { Repository, StoredReflection } from './repository.js';
+import { validateCatalog } from './services/catalog-validation.js';
 
 export class PrismaRepository implements Repository, AdminRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -10,23 +11,45 @@ export class PrismaRepository implements Repository, AdminRepository {
     await this.prisma.$queryRaw`SELECT 1`;
   }
 
-  listMoods() {
-    return this.prisma.moodCategory.findMany({
+  listOrigins() {
+    return this.prisma.originCategory.findMany({
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true, slug: true, description: true },
     });
   }
 
-  async recommendationCandidates(moodId: string) {
-    const items = await this.prisma.trackMood.findMany({
-      where: { moodId, track: { status: 'PUBLISHED', guide: { isNot: null } } },
+  listNeeds() {
+    return this.prisma.needCategory.findMany({
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        reflectionPrompt: true,
+      },
+    });
+  }
+
+  async recommendationCandidates(originId: string, needId: string) {
+    const items = await this.prisma.trackOrigin.findMany({
+      where: {
+        originId,
+        track: {
+          status: 'PUBLISHED',
+          guide: { isNot: null },
+          trackNeeds: { some: { needId } },
+        },
+      },
       orderBy: { weight: 'desc' },
-      include: { track: true },
+      include: { track: { include: { trackNeeds: { where: { needId } } } } },
     });
     return items.map(({ track, weight, reason }) => ({
       trackId: track.id,
-      weight,
-      reason,
+      originWeight: weight,
+      needWeight: track.trackNeeds[0]!.weight,
+      originReason: reason,
+      needReason: track.trackNeeds[0]!.reason,
       track: {
         id: track.id,
         title: track.title,
@@ -43,7 +66,7 @@ export class PrismaRepository implements Repository, AdminRepository {
   async getTrack(id: string) {
     const track = await this.prisma.track.findFirst({
       where: { id, status: 'PUBLISHED', guide: { isNot: null } },
-      include: { guide: true, trackMoods: { include: { mood: true } } },
+      include: { guide: true },
     });
     if (!track?.guide) return null;
     return {
@@ -55,11 +78,6 @@ export class PrismaRepository implements Repository, AdminRepository {
       durationText: track.durationText,
       bilibiliUrl: track.bilibiliUrl,
       searchKeywords: track.searchKeywords,
-      moods: track.trackMoods.map(({ mood }) => ({
-        id: mood.id,
-        name: mood.name,
-        slug: mood.slug,
-      })),
       guide: {
         title: track.guide.title,
         intro: track.guide.intro,
@@ -81,7 +99,8 @@ export class PrismaRepository implements Repository, AdminRepository {
     return this.prisma.reflection.create({
       data: {
         trackId: data.trackId,
-        moodId: data.moodId,
+        originId: data.originId,
+        needId: data.needId,
         anonymousId: data.anonymousId,
         journeyId: data.journeyId,
         idempotencyKey: data.idempotencyKey,
@@ -95,10 +114,7 @@ export class PrismaRepository implements Repository, AdminRepository {
   getReflectionByShareCode(code: string) {
     return this.prisma.reflection.findUnique({
       where: { shareCode: code },
-      include: {
-        track: { select: { title: true, composer: true } },
-        mood: { select: { name: true, slug: true } },
-      },
+      include: { track: { select: { title: true, composer: true } } },
     });
   }
 
@@ -124,13 +140,14 @@ export class PrismaRepository implements Repository, AdminRepository {
       orderBy: { updatedAt: 'desc' },
       include: {
         guide: true,
-        trackMoods: { include: { mood: true }, orderBy: { weight: 'desc' } },
+        trackOrigins: { include: { origin: true }, orderBy: { weight: 'desc' } },
+        trackNeeds: { include: { need: true }, orderBy: { weight: 'desc' } },
       },
     });
   }
 
   async saveTrack(input: AdminTrackInput) {
-    const { id, moods, guide, ...track } = input;
+    const { id, origins, needs, guide, ...track } = input;
     return this.prisma.$transaction(async (transaction) => {
       const saved = id
         ? await transaction.track.update({ where: { id }, data: track })
@@ -140,10 +157,53 @@ export class PrismaRepository implements Repository, AdminRepository {
         create: { trackId: saved.id, ...guide },
         update: guide,
       });
-      await transaction.trackMood.deleteMany({ where: { trackId: saved.id } });
-      await transaction.trackMood.createMany({
-        data: moods.map((mood) => ({ trackId: saved.id, ...mood })),
+      await transaction.trackOrigin.deleteMany({ where: { trackId: saved.id } });
+      await transaction.trackOrigin.createMany({
+        data: origins.map((origin) => ({ trackId: saved.id, ...origin })),
       });
+      await transaction.trackNeed.deleteMany({ where: { trackId: saved.id } });
+      await transaction.trackNeed.createMany({
+        data: needs.map((need) => ({ trackId: saved.id, ...need })),
+      });
+      if (track.status === 'PUBLISHED') {
+        const [allOrigins, allNeeds, originRelations, needRelations] = await Promise.all([
+          transaction.originCategory.findMany({ select: { id: true, name: true } }),
+          transaction.needCategory.findMany({ select: { id: true, name: true } }),
+          transaction.trackOrigin.findMany({
+            select: {
+              originId: true,
+              trackId: true,
+              track: { select: { status: true, guide: true } },
+            },
+          }),
+          transaction.trackNeed.findMany({
+            select: {
+              needId: true,
+              trackId: true,
+              track: { select: { status: true, guide: true } },
+            },
+          }),
+        ]);
+        const errors = validateCatalog(
+          allOrigins,
+          allNeeds,
+          originRelations.map(({ track: relatedTrack, ...relation }) => ({
+            ...relation,
+            published: relatedTrack.status === 'PUBLISHED',
+            hasGuide: Boolean(relatedTrack.guide),
+          })),
+          needRelations.map(({ track: relatedTrack, ...relation }) => ({
+            ...relation,
+            published: relatedTrack.status === 'PUBLISHED',
+            hasGuide: Boolean(relatedTrack.guide),
+          })),
+        );
+        if (errors.length > 0) {
+          const error = new Error(errors.join('\n')) as Error & { statusCode: number };
+          error.statusCode = 400;
+          throw error;
+        }
+      }
       return { id: saved.id };
     });
   }
@@ -158,7 +218,6 @@ export class PrismaRepository implements Repository, AdminRepository {
         shareCode: true,
         createdAt: true,
         track: { select: { title: true, composer: true } },
-        mood: { select: { name: true } },
       },
     });
   }
@@ -171,5 +230,34 @@ export class PrismaRepository implements Repository, AdminRepository {
       this.prisma.event.count({ where: { eventName: 'share_visit' } }),
     ]);
     return { visitors: visitorGroups.length, reflections, shareIntents, shareVisits };
+  }
+
+  async catalogCoverage() {
+    const [origins, needs, originRelations, needRelations] = await Promise.all([
+      this.prisma.originCategory.findMany({ select: { id: true, name: true } }),
+      this.prisma.needCategory.findMany({ select: { id: true, name: true } }),
+      this.prisma.trackOrigin.findMany({
+        select: { originId: true, trackId: true, track: { select: { status: true, guide: true } } },
+      }),
+      this.prisma.trackNeed.findMany({
+        select: { needId: true, trackId: true, track: { select: { status: true, guide: true } } },
+      }),
+    ]);
+    const errors = validateCatalog(
+      origins,
+      needs,
+      originRelations.map(({ track, ...relation }) => ({
+        ...relation,
+        published: track.status === 'PUBLISHED',
+        hasGuide: Boolean(track.guide),
+      })),
+      needRelations.map(({ track, ...relation }) => ({
+        ...relation,
+        published: track.status === 'PUBLISHED',
+        hasGuide: Boolean(track.guide),
+      })),
+    );
+    const total = origins.length * needs.length;
+    return { total, covered: total - errors.length, errors };
   }
 }
