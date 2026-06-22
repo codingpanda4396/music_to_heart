@@ -79,5 +79,5 @@ install -m 0755 "$0" "$ROOT/bin/deploy.sh"
 printf '%s %s %s %s\n' "$(date -u +%FT%TZ)" "$COMMIT" "$IMAGE" "$PREVIOUS_IMAGE" >> "$ROOT/releases.log"
 tail -n 10 "$ROOT/releases.log" > "$ROOT/releases.log.tmp" && mv "$ROOT/releases.log.tmp" "$ROOT/releases.log"
 trap - ERR
-nohup sh -c "sleep 900; docker rm -f '$OLD_CONTAINER' >/dev/null 2>&1 || true" >/dev/null 2>&1 &
+nohup sh -c "sleep 900; docker rm -f '$OLD_CONTAINER' >/dev/null 2>&1 || true" 9>&- >/dev/null 2>&1 &
 echo "deployed $COMMIT to $NEXT using $IMAGE"

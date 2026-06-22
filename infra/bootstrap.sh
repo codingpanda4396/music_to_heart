@@ -94,12 +94,12 @@ printf 'upstream qujing_active { server 127.0.0.1:3101; keepalive 32; }\n' > /op
 chown deploy:deploy /opt/qujing/current-upstream.conf
 install -m 0644 "$SCRIPT_DIR/nginx/log-format.conf" /etc/nginx/conf.d/00-qujing-log-format.conf
 cat > /etc/nginx/sites-available/qujing-bootstrap <<EOF
-server { listen 80; listen [::]:80; server_name $DOMAIN www.$DOMAIN; location /.well-known/acme-challenge/ { root /var/www/certbot; } location / { return 200 'bootstrap ready'; add_header Content-Type text/plain; } }
+server { listen 80; listen [::]:80; server_name $DOMAIN; location /.well-known/acme-challenge/ { root /var/www/certbot; } location / { return 200 'bootstrap ready'; add_header Content-Type text/plain; } }
 EOF
 ln -sf /etc/nginx/sites-available/qujing-bootstrap /etc/nginx/sites-enabled/qujing
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
-certbot certonly --webroot -w /var/www/certbot -d "$DOMAIN" -d "www.$DOMAIN" --email "$ADMIN_EMAIL" --agree-tos --non-interactive
+certbot certonly --webroot -w /var/www/certbot -d "$DOMAIN" --email "$ADMIN_EMAIL" --agree-tos --non-interactive
 sed "s/__DOMAIN__/$DOMAIN/g" "$SCRIPT_DIR/nginx/qujing.conf.template" > /etc/nginx/sites-available/qujing
 ln -sf /etc/nginx/sites-available/qujing /etc/nginx/sites-enabled/qujing
 nginx -t && systemctl reload nginx
