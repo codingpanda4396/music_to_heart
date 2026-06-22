@@ -50,6 +50,7 @@ describe('production delivery contracts', () => {
     expect(deployWorkflow).not.toContain('ACR_');
     expect(deployWorkflow).not.toContain('ghcr.io');
     expect(deployScript).toContain('LOCAL_IMAGE_ID');
+    expect(deployScript).toContain('9>&-');
     expect(rollbackWorkflow).toContain('^sha256:[0-9a-f]{64}$');
     expect(rollbackWorkflow).not.toContain('ACR_REGISTRY');
   });
@@ -59,6 +60,9 @@ describe('production delivery contracts', () => {
     const bootstrap = readRepoFile('infra/bootstrap.sh');
 
     expect(nginxTemplate).not.toContain('www.__DOMAIN__');
+    expect(nginxTemplate.indexOf('include /opt/qujing/current-upstream.conf')).toBeLessThan(
+      nginxTemplate.indexOf('server {'),
+    );
     expect(bootstrap).not.toContain('www.$DOMAIN');
     expect(bootstrap).toContain('certbot certonly');
     expect(bootstrap).toContain('-d "$DOMAIN"');
